@@ -1,0 +1,320 @@
+/* RansomGuard EDR Enterprise Cybersecurity QSS Stylesheet */
+
+/* Main Window & Core Elements */
+QMainWindow {
+    background-color: #05070A;
+}
+
+QWidget {
+    font-family: "Segoe UI", "Inter", -apple-system, sans-serif;
+    color: #E6EDF3;
+    font-size: 13px;
+    background: transparent;
+}
+
+/* Scroll Content */
+QWidget#scrollContent {
+    background-color: #05070A;
+}
+
+/* Sidebar Styling */
+QFrame#sidebar {
+    background-color: #090D12;
+    border-right: 1px solid #1C2630;
+    min-width: 220px;
+    max-width: 220px;
+}
+
+QLabel#sidebarTitle {
+    font-size: 16px;
+    font-weight: bold;
+    color: #3B82F6;
+    padding: 15px 10px;
+    border-bottom: 1px solid #1C2630;
+}
+
+QPushButton.sidebarButton {
+    background-color: transparent;
+    border: none;
+    border-left: 3px solid transparent;
+    color: #8B98A8;
+    text-align: left;
+    padding: 10px 18px;
+    font-size: 13px;
+    border-radius: 6px;
+    margin: 2px 8px;
+}
+
+QPushButton.sidebarButton:hover {
+    background-color: #10161D;
+    color: #E6EDF3;
+    border-left: 3px solid transparent;
+}
+
+QPushButton.sidebarButton:checked {
+    background-color: #10161D;
+    color: #3B82F6;
+    font-weight: bold;
+    border-left: 3px solid #3B82F6;
+}
+
+/* Topbar Header Styling */
+QFrame#topbar {
+    background-color: #090D12;
+    border-bottom: 1px solid #1C2630;
+    min-height: 56px;
+    max-height: 56px;
+}
+
+QLabel#topbarTitle {
+    font-size: 17px;
+    font-weight: bold;
+    color: #E6EDF3;
+    padding-left: 20px;
+}
+
+/* Dashboard Cards */
+QFrame.metricCard {
+    background-color: #10161D;
+    border: 1px solid #1C2630;
+    border-radius: 8px;
+    padding: 12px;
+}
+
+QFrame.metricCard:hover {
+    border-color: #3B82F6;
+}
+
+QLabel.cardValue {
+    font-size: 24px;
+    font-weight: bold;
+    color: #E6EDF3;
+}
+
+QLabel.cardTitle {
+    font-size: 11px;
+    color: #8B98A8;
+    font-weight: bold;
+}
+
+/* Status Badges */
+QLabel.statusBadge {
+    border-radius: 4px;
+    padding: 3px 8px;
+    font-weight: bold;
+    font-size: 11px;
+}
+
+QLabel.badgeLow {
+    background-color: rgba(59, 130, 246, 0.15);
+    color: #3B82F6;
+    border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+QLabel.badgeMedium {
+    background-color: rgba(245, 158, 11, 0.15);
+    color: #F59E0B;
+    border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+QLabel.badgeHigh {
+    background-color: rgba(239, 68, 68, 0.15);
+    color: #EF4444;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+QLabel.badgeCritical {
+    background-color: rgba(239, 68, 68, 0.3);
+    color: #EF4444;
+    border: 2px solid #EF4444;
+}
+
+/* Table Architecture (Model/View Viewports) */
+QTableView {
+    background-color: #090D12;
+    border: 1px solid #1C2630;
+    gridline-color: #1C2630;
+    border-radius: 8px;
+    outline: none;
+}
+
+QTableView::item {
+    padding: 8px 10px;
+    border-bottom: 1px solid #1C2630;
+}
+
+QTableView::item:selected {
+    background-color: #10161D;
+    color: #E6EDF3;
+}
+
+QHeaderView::section {
+    background-color: #0D1218;
+    color: #8B98A8;
+    padding: 8px 10px;
+    border: none;
+    border-bottom: 2px solid #1C2630;
+    font-weight: bold;
+    font-size: 11px;
+}
+
+/* Forms & Interactive Controls */
+QPushButton.primaryButton {
+    background-color: #3B82F6;
+    border: none;
+    color: #FFFFFF;
+    padding: 7px 14px;
+    border-radius: 6px;
+    font-weight: bold;
+}
+
+QPushButton.primaryButton:hover {
+    background-color: #2563EB;
+}
+
+QPushButton.primaryButton:pressed {
+    background-color: #1D4ED8;
+}
+
+QPushButton.secondaryButton {
+    background-color: #10161D;
+    border: 1px solid #1C2630;
+    color: #E6EDF3;
+    padding: 7px 14px;
+    border-radius: 6px;
+}
+
+QPushButton.secondaryButton:hover {
+    background-color: #1C2630;
+}
+
+QPushButton.actionRedButton {
+    background-color: #EF4444;
+    border: none;
+    color: #FFFFFF;
+    padding: 7px 14px;
+    border-radius: 6px;
+    font-weight: bold;
+}
+
+QPushButton.actionRedButton:hover {
+    background-color: #DC2626;
+}
+
+QLineEdit {
+    background-color: #090D12;
+    border: 1px solid #1C2630;
+    border-radius: 6px;
+    padding: 7px 10px;
+    color: #E6EDF3;
+}
+
+QLineEdit:focus {
+    border-color: #3B82F6;
+}
+
+QComboBox {
+    background-color: #090D12;
+    border: 1px solid #1C2630;
+    border-radius: 6px;
+    padding: 6px 12px;
+    color: #E6EDF3;
+}
+
+QComboBox::drop-down {
+    border: none;
+}
+
+QListWidget {
+    background-color: #090D12;
+    border: 1px solid #1C2630;
+    border-radius: 6px;
+    padding: 4px;
+}
+
+QListWidget::item {
+    padding: 6px 8px;
+    border-radius: 4px;
+}
+
+QListWidget::item:hover {
+    background-color: #10161D;
+}
+
+QListWidget::item:selected {
+    background-color: #10161D;
+    color: #3B82F6;
+}
+
+/* Scrollbars */
+QScrollBar:vertical {
+    border: none;
+    background: #05070A;
+    width: 8px;
+    margin: 0px;
+}
+
+QScrollBar::handle:vertical {
+    background: #1C2630;
+    min-height: 20px;
+    border-radius: 4px;
+}
+
+QScrollBar::handle:vertical:hover {
+    background: #3B82F6;
+}
+
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+    border: none;
+    background: none;
+}
+
+QScrollBar:horizontal {
+    border: none;
+    background: #05070A;
+    height: 8px;
+    margin: 0px;
+}
+
+QScrollBar::handle:horizontal {
+    background: #1C2630;
+    min-width: 20px;
+    border-radius: 4px;
+}
+
+QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {
+    border: none;
+    background: none;
+}
+
+/* Custom Tabs or Containers */
+QTabWidget::pane {
+    border: 1px solid #1C2630;
+    background-color: #090D12;
+    border-radius: 8px;
+}
+
+QTabBar::tab {
+    background: #090D12;
+    border: 1px solid #1C2630;
+    padding: 8px 16px;
+    border-top-left-radius: 6px;
+    border-top-right-radius: 6px;
+    margin-right: 2px;
+    color: #8B98A8;
+}
+
+QTabBar::tab:selected {
+    background: #10161D;
+    border-bottom-color: #10161D;
+    color: #E6EDF3;
+    font-weight: bold;
+}
+
+/* Alerts and Incident Hero Banner */
+QFrame#incidentHero {
+    background-color: rgba(239, 68, 68, 0.1);
+    border: 2px solid #EF4444;
+    border-radius: 8px;
+    padding: 14px;
+}
