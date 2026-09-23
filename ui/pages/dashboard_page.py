@@ -75,19 +75,19 @@ class ClickableAlertFrame(QFrame):
         elif sev == "MEDIUM":
             border_left_col = "#F59E0B"
         else:
-            border_left_col = "#3B82F6"
+            border_left_col = "#168BFF"
             
         self.setStyleSheet(f"""
             QFrame#clickableAlertFrame {{
-                background-color: #0D1218;
-                border: 1px solid #1C2630;
+                background-color: #0D1422;
+                border: 1px solid #1A2940;
                 border-left: 4px solid {border_left_col};
                 border-radius: 6px;
                 padding: 10px 14px;
             }}
             QFrame#clickableAlertFrame:hover {{
-                background-color: #10161D;
-                border-color: #3B82F6;
+                background-color: #111A2B;
+                border-color: #21334D;
                 border-left-color: {border_left_col};
             }}
         """)
@@ -109,7 +109,7 @@ class ClickableAlertFrame(QFrame):
         elif sev == "MEDIUM":
             sev_lbl.setStyleSheet("background-color: rgba(245, 158, 11, 0.2); color: #F59E0B; font-weight: bold; font-size: 12px; border-radius: 3px; border: none;")
         else:
-            sev_lbl.setStyleSheet("background-color: rgba(59, 130, 246, 0.2); color: #3B82F6; font-weight: bold; font-size: 12px; border-radius: 3px; border: none;")
+            sev_lbl.setStyleSheet("background-color: rgba(22, 139, 255, 0.15); color: #38A8FF; font-weight: bold; font-size: 12px; border-radius: 3px; border: 1px solid #168BFF;")
         hdr.addWidget(sev_lbl)
         
         # Threat Activity Name
@@ -124,10 +124,10 @@ class ClickableAlertFrame(QFrame):
         risk_lbl.setStyleSheet("background-color: rgba(245, 158, 11, 0.15); color: #F59E0B; font-weight: bold; font-size: 12px; border-radius: 3px; border: none;")
         hdr.addWidget(risk_lbl)
         
-        # Status Badge
-        status_str = incident_data.get("status", "ACTIVE")
-        status_lbl = QLabel(f" {status_str} ", self)
-        if status_str == "RESOLVED":
+        # Detection Status Badge
+        status = incident_data.get("status", "ACTIVE").upper()
+        status_lbl = QLabel(f" {status} ", self)
+        if status == "RESOLVED":
             status_lbl.setStyleSheet("background-color: rgba(34, 197, 94, 0.15); color: #22C55E; font-weight: bold; font-size: 12px; border-radius: 3px; border: none;")
         else:
             status_lbl.setStyleSheet("background-color: rgba(239, 68, 68, 0.15); color: #EF4444; font-weight: bold; font-size: 12px; border-radius: 3px; border: none;")
@@ -135,17 +135,17 @@ class ClickableAlertFrame(QFrame):
         
         hdr.addStretch()
         
-        # Time
-        raw_time = incident_data.get("detection_time", "")
-        time_lbl = QLabel(raw_time, self)
-        time_lbl.setStyleSheet("color: #8B98A8; font-size: 13px; font-family: Consolas; background: transparent; border: none;")
-        hdr.addWidget(time_lbl)
-        
+        # Timestamp
+        ts = incident_data.get("detection_time", "")
+        if ts:
+            time_lbl = QLabel(ts, self)
+            time_lbl.setStyleSheet("color: #71809A; font-size: 12px; background: transparent; border: none;")
+            hdr.addWidget(time_lbl)
+            
         layout.addLayout(hdr)
         
-        # Row 2: Target Path, Attributed Process, Reason & Investigate Button
+        # Row 2: File Path, Detection Source & Reason
         mid_row = QHBoxLayout()
-        mid_row.setSpacing(12)
         
         # Target Path
         path = incident_data.get("full_path") or incident_data.get("affected_folder", "")
@@ -188,16 +188,17 @@ class ClickableAlertFrame(QFrame):
         self.btn_details = QPushButton("Investigate Incident →", self)
         self.btn_details.setStyleSheet("""
             QPushButton {
-                background-color: #3B82F6;
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #168BFF, stop:1 #38A8FF);
                 color: #FFFFFF;
-                border: none;
+                border: 1px solid #168BFF;
                 border-radius: 4px;
                 padding: 4px 10px;
                 font-size: 13px;
                 font-weight: bold;
             }
             QPushButton:hover {
-                background-color: #2563EB;
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #1A94FF, stop:1 #52B4FF);
+                border-color: #38A8FF;
             }
         """)
         self.btn_details.setCursor(Qt.PointingHandCursor)
@@ -310,10 +311,13 @@ class DashboardPage(QWidget):
         self.pulse_card.setObjectName("socPulseCard")
         self.pulse_card.setStyleSheet("""
             QFrame#socPulseCard {
-                background-color: #10161D;
-                border: 1px solid #1C2630;
+                background-color: #0D1422;
+                border: 1px solid #1A2940;
                 border-radius: 8px;
                 padding: 12px 16px;
+            }
+            QFrame#socPulseCard:hover {
+                border-color: #21334D;
             }
         """)
         self.pulse_layout = QVBoxLayout(self.pulse_card)
@@ -322,7 +326,7 @@ class DashboardPage(QWidget):
         
         p_hdr = QHBoxLayout()
         p_title = QLabel("⚡ SECURITY ACTIVITY PULSE", self.pulse_card)
-        p_title.setStyleSheet("font-size: 15px; color: #8B98A8; font-weight: bold; letter-spacing: 0.3px; background: transparent; border: none;")
+        p_title.setStyleSheet("font-size: 15px; color: #71809A; font-weight: bold; letter-spacing: 0.3px; background: transparent; border: none;")
         p_hdr.addWidget(p_title)
         p_hdr.addStretch()
         self.pulse_layout.addLayout(p_hdr)
@@ -344,10 +348,13 @@ class DashboardPage(QWidget):
         self.scan_card.setObjectName("existingScanCard")
         self.scan_card.setStyleSheet("""
             QFrame#existingScanCard {
-                background-color: #10161D;
-                border: 1px solid #1C2630;
+                background-color: #0D1422;
+                border: 1px solid #1A2940;
                 border-radius: 8px;
                 padding: 14px 18px;
+            }
+            QFrame#existingScanCard:hover {
+                border-color: #21334D;
             }
         """)
         self.scan_card_layout = QVBoxLayout(self.scan_card)
@@ -398,9 +405,9 @@ class DashboardPage(QWidget):
         self.scan_mode_combo.addItems(["Incremental Scan", "Full Scan"])
         self.scan_mode_combo.setStyleSheet("""
             QComboBox {
-                background-color: #0D1218;
-                color: #93C5FD;
-                border: 1px solid #1C2630;
+                background-color: #111A2B;
+                color: #38A8FF;
+                border: 1px solid #1A2940;
                 border-radius: 4px;
                 padding: 2px 8px;
                 font-size: 13px;
@@ -411,10 +418,11 @@ class DashboardPage(QWidget):
                 width: 14px;
             }
             QComboBox QAbstractItemView {
-                background-color: #10161D;
-                color: #E6EDF3;
-                border: 1px solid #1C2630;
-                selection-background-color: #1D4ED8;
+                background-color: #0D1422;
+                color: #F8FAFC;
+                border: 1px solid #1A2940;
+                selection-background-color: #17233A;
+                selection-color: #38A8FF;
             }
         """)
         self.scan_meta_row.addWidget(self.scan_mode_combo)
@@ -462,13 +470,13 @@ class DashboardPage(QWidget):
         self.scan_progress_bar.setFixedHeight(6)
         self.scan_progress_bar.setStyleSheet("""
             QProgressBar {
-                border: 1px solid #1C2630;
+                border: 1px solid #1A2940;
                 border-radius: 3px;
                 text-align: center;
-                background-color: #090D12;
+                background-color: #0D1422;
             }
             QProgressBar::chunk {
-                background-color: #3B82F6;
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #168BFF, stop:1 #38A8FF);
                 border-radius: 2px;
             }
         """)
@@ -490,16 +498,17 @@ class DashboardPage(QWidget):
         self.btn_scan_pause = QPushButton("Pause", self.scan_card)
         self.btn_scan_pause.setStyleSheet("""
             QPushButton {
-                background-color: #1E293B;
+                background-color: #111A2B;
                 color: #E2E8F0;
-                border: 1px solid #334155;
+                border: 1px solid #1A2940;
                 border-radius: 4px;
                 padding: 6px 14px;
                 font-size: 13px;
                 font-weight: 600;
             }
             QPushButton:hover {
-                background-color: #334155;
+                background-color: #17233A;
+                border-color: #355B8A;
             }
         """)
         self.btn_scan_pause.setCursor(Qt.PointingHandCursor)
@@ -530,20 +539,22 @@ class DashboardPage(QWidget):
         self.btn_scan_now = QPushButton("Scan Now", self.scan_card)
         self.btn_scan_now.setStyleSheet("""
             QPushButton {
-                background-color: #2563EB;
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #168BFF, stop:1 #38A8FF);
                 color: #FFFFFF;
-                border: none;
-                border-radius: 4px;
+                border: 1px solid #168BFF;
+                border-radius: 6px;
                 padding: 6px 18px;
                 font-size: 13px;
                 font-weight: bold;
             }
             QPushButton:hover {
-                background-color: #1D4ED8;
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #1A94FF, stop:1 #52B4FF);
+                border-color: #38A8FF;
             }
             QPushButton:disabled {
-                background-color: #1E293B;
-                color: #64748B;
+                background-color: #0D1422;
+                color: #71809A;
+                border: 1px solid #1A2940;
             }
         """)
         self.btn_scan_now.setCursor(Qt.PointingHandCursor)
@@ -567,8 +578,8 @@ class DashboardPage(QWidget):
         self.alerts_card.setObjectName("socAlertsCard")
         self.alerts_card.setStyleSheet("""
             QFrame#socAlertsCard {
-                background-color: #10161D;
-                border: 1px solid #1C2630;
+                background-color: #0D1422;
+                border: 1px solid #1A2940;
                 border-radius: 8px;
                 padding: 14px 18px;
             }
@@ -579,17 +590,17 @@ class DashboardPage(QWidget):
         
         self.alerts_hdr = QHBoxLayout()
         self.alerts_title = QLabel("🚨 ACTIVE SECURITY ALERTS & CORRELATED THREATS", self.alerts_card)
-        self.alerts_title.setStyleSheet("font-size: 16px; color: #E6EDF3; font-weight: bold; letter-spacing: 0.3px; background: transparent; border: none;")
+        self.alerts_title.setStyleSheet("font-size: 16px; color: #E2E8F0; font-weight: bold; letter-spacing: 0.3px; background: transparent; border: none;")
         self.alerts_hdr.addWidget(self.alerts_title)
         
         self.alerts_count_badge = QLabel("0 INCIDENTS", self.alerts_card)
-        self.alerts_count_badge.setStyleSheet("background-color: #0D1218; color: #8B98A8; font-size: 12px; font-weight: bold; border: 1px solid #1C2630; border-radius: 4px; padding: 2px 6px; margin-left: 8px;")
+        self.alerts_count_badge.setStyleSheet("background-color: #111A2B; color: #A9B8D4; font-size: 12px; font-weight: bold; border: 1px solid #1A2940; border-radius: 4px; padding: 2px 6px; margin-left: 8px;")
         self.alerts_hdr.addWidget(self.alerts_count_badge)
         
         self.alerts_hdr.addStretch()
         
         self.btn_view_threats = QPushButton("View Threats Repository →", self.alerts_card)
-        self.btn_view_threats.setStyleSheet("background-color: transparent; color: #3B82F6; border: none; font-size: 13px; font-weight: bold;")
+        self.btn_view_threats.setStyleSheet("background-color: transparent; color: #168BFF; border: none; font-size: 13px; font-weight: bold;")
         self.btn_view_threats.setCursor(Qt.PointingHandCursor)
         self.btn_view_threats.clicked.connect(lambda: self.navigate_to_page.emit(2))
         self.alerts_hdr.addWidget(self.btn_view_threats)
@@ -610,8 +621,8 @@ class DashboardPage(QWidget):
         self.activity_stream_card.setObjectName("socActivityCard")
         self.activity_stream_card.setStyleSheet("""
             QFrame#socActivityCard {
-                background-color: #10161D;
-                border: 1px solid #1C2630;
+                background-color: #0D1422;
+                border: 1px solid #1A2940;
                 border-radius: 8px;
                 padding: 14px 18px;
             }
@@ -622,12 +633,12 @@ class DashboardPage(QWidget):
         
         act_hdr = QHBoxLayout()
         act_title = QLabel("⏱️ RECENT FILESYSTEM ACTIVITY (AUDIT STREAM)", self.activity_stream_card)
-        act_title.setStyleSheet("font-size: 16px; color: #8B98A8; font-weight: bold; background: transparent; border: none;")
+        act_title.setStyleSheet("font-size: 16px; color: #A9B8D4; font-weight: bold; background: transparent; border: none;")
         act_hdr.addWidget(act_title)
         act_hdr.addStretch()
         
         self.btn_view_live = QPushButton("Live Stream →", self.activity_stream_card)
-        self.btn_view_live.setStyleSheet("background-color: transparent; color: #3B82F6; border: none; font-size: 13px; font-weight: bold;")
+        self.btn_view_live.setStyleSheet("background-color: transparent; color: #A855F7; border: none; font-size: 13px; font-weight: bold;")
         self.btn_view_live.setCursor(Qt.PointingHandCursor)
         self.btn_view_live.clicked.connect(lambda: self.navigate_to_page.emit(1))
         act_hdr.addWidget(self.btn_view_live)
@@ -668,8 +679,8 @@ class DashboardPage(QWidget):
         self.dash_header_card.setObjectName("dashHeaderCard")
         self.dash_header_card.setStyleSheet("""
             QFrame#dashHeaderCard {
-                background-color: #0A0F16;
-                border: 1px solid #1C2630;
+                background-color: #0D1422;
+                border: 1px solid #1A2940;
                 border-radius: 8px;
                 padding: 0px;
             }
@@ -695,7 +706,7 @@ class DashboardPage(QWidget):
         top_row.addWidget(sep_bullet)
 
         ops_lbl = QLabel("Endpoint Security Operations Center", self.dash_header_card)
-        ops_lbl.setStyleSheet("font-size: 13px; color: #4B7BAE; font-weight: 500; background: transparent; border: none;")
+        ops_lbl.setStyleSheet("font-size: 13px; color: #A9B8D4; font-weight: 500; background: transparent; border: none;")
         top_row.addWidget(ops_lbl)
 
         top_row.addStretch()
@@ -717,7 +728,7 @@ class DashboardPage(QWidget):
         # ── DIVIDER
         h_div = QFrame(self.dash_header_card)
         h_div.setFrameShape(QFrame.Shape.HLine)
-        h_div.setStyleSheet("background-color: #1C2630; max-height: 1px; border: none;")
+        h_div.setStyleSheet("background-color: #1A2940; max-height: 1px; border: none;")
         h_main_vbox.addWidget(h_div)
 
         # ── ROW 2: Horizontal Info Row (Host · OS · User · Drive)
@@ -821,8 +832,8 @@ class DashboardPage(QWidget):
         self.endpoint_status_card.setObjectName("endpointStatusCard")
         self.endpoint_status_card.setStyleSheet("""
             QFrame#endpointStatusCard {
-                background-color: #10161D;
-                border: 1px solid #1C2630;
+                background-color: #0D1422;
+                border: 1px solid #1A2940;
                 border-radius: 8px;
                 padding: 12px 16px;
             }
@@ -833,13 +844,13 @@ class DashboardPage(QWidget):
 
         # Card Title
         s_title = QLabel("🖥 ENDPOINT HOST & EDR AGENT STATUS", self.endpoint_status_card)
-        s_title.setStyleSheet("font-size: 15px; color: #8B98A8; font-weight: bold; letter-spacing: 0.3px; background: transparent; border: none;")
+        s_title.setStyleSheet("font-size: 15px; color: #A9B8D4; font-weight: bold; letter-spacing: 0.3px; background: transparent; border: none;")
         s_layout.addWidget(s_title)
 
         # Subtle separator
         t_sep = QFrame(self.endpoint_status_card)
         t_sep.setFrameShape(QFrame.Shape.HLine)
-        t_sep.setStyleSheet("background-color: #1C2630; max-height: 1px; border: none; margin-top: 2px; margin-bottom: 2px;")
+        t_sep.setStyleSheet("background-color: #1A2940; max-height: 1px; border: none; margin-top: 2px; margin-bottom: 2px;")
         s_layout.addWidget(t_sep)
 
         hostname = socket.gethostname() or "Unknown"
@@ -856,7 +867,7 @@ class DashboardPage(QWidget):
         def _add_divider():
             d = QFrame(self.endpoint_status_card)
             d.setFrameShape(QFrame.Shape.HLine)
-            d.setStyleSheet("background-color: #1C2630; max-height: 1px; border: none; margin: 1px 0px;")
+            d.setStyleSheet("background-color: #24113F; max-height: 1px; border: none; margin: 1px 0px;")
             return d
 
         # 1. Host
@@ -873,44 +884,46 @@ class DashboardPage(QWidget):
         s_layout.addLayout(r1)
         s_layout.addWidget(_add_divider())
 
-        # 2. User
+        # 2. OS Info
         r2 = QHBoxLayout()
         r2.setSpacing(8)
-        l2 = QLabel("User", self.endpoint_status_card)
+        l2 = QLabel("Platform", self.endpoint_status_card)
         l2.setStyleSheet("color: #8B98A8; font-size: 13px; background: transparent; border: none;")
-        self.status_user_val_lbl = QLabel(username, self.endpoint_status_card)
-        self.status_user_val_lbl.setStyleSheet("color: #E6EDF3; font-size: 13px; font-family: Consolas, monospace; font-weight: 600; background: transparent; border: none;")
-        self.status_user_val_lbl.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        self.status_os_val_lbl = QLabel(os_info, self.endpoint_status_card)
+        self.status_os_val_lbl.setStyleSheet("color: #E6EDF3; font-size: 13px; font-family: Consolas, monospace; font-weight: 600; background: transparent; border: none;")
+        self.status_os_val_lbl.setTextInteractionFlags(Qt.TextSelectableByMouse)
         r2.addWidget(l2)
         r2.addStretch()
-        r2.addWidget(self.status_user_val_lbl)
+        r2.addWidget(self.status_os_val_lbl)
         s_layout.addLayout(r2)
         s_layout.addWidget(_add_divider())
 
-        # 3. OS
+        # 3. Active User
         r3 = QHBoxLayout()
         r3.setSpacing(8)
-        l3 = QLabel("OS", self.endpoint_status_card)
+        l3 = QLabel("User Account", self.endpoint_status_card)
         l3.setStyleSheet("color: #8B98A8; font-size: 13px; background: transparent; border: none;")
-        self.status_os_val_lbl = QLabel(os_info, self.endpoint_status_card)
-        self.status_os_val_lbl.setStyleSheet("color: #E6EDF3; font-size: 13px; font-weight: 600; background: transparent; border: none;")
+        self.status_user_val_lbl = QLabel(username, self.endpoint_status_card)
+        self.status_user_val_lbl.setStyleSheet("color: #E6EDF3; font-size: 13px; font-family: Consolas, monospace; font-weight: 600; background: transparent; border: none;")
+        self.status_user_val_lbl.setTextInteractionFlags(Qt.TextSelectableByMouse)
         r3.addWidget(l3)
         r3.addStretch()
-        r3.addWidget(self.status_os_val_lbl)
+        r3.addWidget(self.status_user_val_lbl)
         s_layout.addLayout(r3)
         s_layout.addWidget(_add_divider())
 
-        # 4. Drive
+        # 4. Protected Drives Scope
         r4 = QHBoxLayout()
         r4.setSpacing(8)
-        l4 = QLabel("Drive", self.endpoint_status_card)
+        l4 = QLabel("Protected Scope", self.endpoint_status_card)
         l4.setStyleSheet("color: #8B98A8; font-size: 13px; background: transparent; border: none;")
-        self.status_drive_val_lbl = QLabel(formatted_drives, self.endpoint_status_card)
-        self.status_drive_val_lbl.setStyleSheet("color: #93C5FD; font-size: 13px; font-family: Consolas, monospace; font-weight: 600; background: transparent; border: none;")
-        self.status_drive_val_lbl.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        self.status_drives_val_lbl = QLabel(formatted_drives, self.endpoint_status_card)
+        self.status_drives_val_lbl.setStyleSheet("color: #00E59A; font-size: 13px; font-family: Consolas, monospace; font-weight: bold; background: transparent; border: none;")
+        self.status_drives_val_lbl.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        self.status_drive_val_lbl = self.status_drives_val_lbl
         r4.addWidget(l4)
         r4.addStretch()
-        r4.addWidget(self.status_drive_val_lbl)
+        r4.addWidget(self.status_drives_val_lbl)
         s_layout.addLayout(r4)
         s_layout.addWidget(_add_divider())
 
@@ -934,8 +947,8 @@ class DashboardPage(QWidget):
         self.cpu_bar.setFixedHeight(6)
         self.cpu_bar.setStyleSheet("""
             QProgressBar {
-                background-color: #1C2630;
-                border: none;
+                background-color: #111A2B;
+                border: 1px solid #1A2940;
                 border-radius: 3px;
                 max-height: 6px;
             }
@@ -968,8 +981,8 @@ class DashboardPage(QWidget):
         self.ram_bar.setFixedHeight(6)
         self.ram_bar.setStyleSheet("""
             QProgressBar {
-                background-color: #1C2630;
-                border: none;
+                background-color: #111A2B;
+                border: 1px solid #1A2940;
                 border-radius: 3px;
                 max-height: 6px;
             }
@@ -1004,8 +1017,8 @@ class DashboardPage(QWidget):
                 cpu_col = "#22C55E" if cpu_val < 70 else ("#F59E0B" if cpu_val < 85 else "#EF4444")
                 self.cpu_bar.setStyleSheet(f"""
                     QProgressBar {{
-                        background-color: #1C2630;
-                        border: none;
+                        background-color: #111A2B;
+                        border: 1px solid #1A2940;
                         border-radius: 3px;
                         max-height: 6px;
                     }}
@@ -1022,8 +1035,8 @@ class DashboardPage(QWidget):
                 ram_col = "#22C55E" if ram_val < 70 else ("#F59E0B" if ram_val < 85 else "#EF4444")
                 self.ram_bar.setStyleSheet(f"""
                     QProgressBar {{
-                        background-color: #1C2630;
-                        border: none;
+                        background-color: #111A2B;
+                        border: 1px solid #1A2940;
                         border-radius: 3px;
                         max-height: 6px;
                     }}
@@ -1263,7 +1276,7 @@ class DashboardPage(QWidget):
         if total_active_count > 0:
             self.alerts_count_badge.setStyleSheet("background-color: rgba(239, 68, 68, 0.2); color: #EF4444; font-size: 12px; font-weight: bold; border: 1px solid rgba(239, 68, 68, 0.4); border-radius: 4px; padding: 2px 6px; margin-left: 8px;")
         else:
-            self.alerts_count_badge.setStyleSheet("background-color: #0D1218; color: #8B98A8; font-size: 12px; font-weight: bold; border: 1px solid #1C2630; border-radius: 4px; padding: 2px 6px; margin-left: 8px;")
+            self.alerts_count_badge.setStyleSheet("background-color: #111A2B; color: #8B98A8; font-size: 12px; font-weight: bold; border: 1px solid #1A2940; border-radius: 4px; padding: 2px 6px; margin-left: 8px;")
 
         # Query up to 6 most recent real ACTIVE incidents inside the active scope
         incidents_rows = self.inc_repo.get_incidents(status_filter="ACTIVE", limit=6)
@@ -1290,8 +1303,8 @@ class DashboardPage(QWidget):
             empty_frame.setObjectName("emptyAlertFrame")
             empty_frame.setStyleSheet("""
                 QFrame#emptyAlertFrame {
-                    background-color: #0D1218;
-                    border: 1px solid #1C2630;
+                    background-color: #0D1422;
+                    border: 1px solid #1A2940;
                     border-radius: 6px;
                     padding: 16px 20px;
                 }
@@ -1355,14 +1368,14 @@ class DashboardPage(QWidget):
             row_frame.setObjectName(row_id)
             row_frame.setStyleSheet(f"""
                 QFrame#{row_id} {{
-                    background-color: #0D1218;
-                    border: 1px solid #1C2630;
+                    background-color: #0D1422;
+                    border: 1px solid #1A2940;
                     border-radius: 4px;
                     padding: 4px 8px;
                 }}
                 QFrame#{row_id}:hover {{
-                    background-color: #10161D;
-                    border-color: #3B82F6;
+                    background-color: #111A2B;
+                    border-color: #21334D;
                 }}
             """)
             r_layout = QHBoxLayout(row_frame)
@@ -1382,7 +1395,7 @@ class DashboardPage(QWidget):
             if "CREATE" in op:
                 op_lbl.setStyleSheet("background-color: rgba(34, 197, 94, 0.15); color: #22C55E; font-weight: bold; font-size: 11px; border-radius: 2px; border: none;")
             elif "MODIF" in op:
-                op_lbl.setStyleSheet("background-color: rgba(59, 130, 246, 0.15); color: #3B82F6; font-weight: bold; font-size: 11px; border-radius: 2px; border: none;")
+                op_lbl.setStyleSheet("background-color: rgba(123, 63, 242, 0.15); color: #A855F7; font-weight: bold; font-size: 11px; border-radius: 2px; border: none;")
             elif "RENAM" in op:
                 op_lbl.setStyleSheet("background-color: rgba(245, 158, 11, 0.15); color: #F59E0B; font-weight: bold; font-size: 11px; border-radius: 2px; border: none;")
             else:
@@ -1402,9 +1415,10 @@ class DashboardPage(QWidget):
             if len(short_path) > 60:
                 short_path = short_path[:28] + "..." + short_path[-28:]
             path_lbl = QLabel(short_path, row_frame)
-            path_lbl.setStyleSheet("color: #E6EDF3; font-size: 13px; font-family: Consolas; background: transparent; border: none;")
-            path_lbl.setToolTip(path_display)
-            r_layout.addWidget(path_lbl)
+            path_lbl.setStyleSheet("color: #CBD5E1; font-size: 12px; font-family: Consolas; background: transparent; border: none;")
+            path_lbl.setToolTip(str(path_display))
+            path_lbl.setTextInteractionFlags(Qt.TextSelectableByMouse)
+            r_layout.addWidget(path_lbl, stretch=1)
 
             r_layout.addStretch()
 
@@ -1440,19 +1454,12 @@ class DashboardPage(QWidget):
         """Deprecated hardware polling stub."""
         pass
 
-    # =============================================================
-    # Existing File Scan (Endpoint Discovery) Handlers
-    # =============================================================
     def _set_ui_state_idle(self):
         self._current_ui_scan_state = "IDLE"
         self.scan_status_badge.setText("● IDLE")
         self.scan_status_badge.setStyleSheet("background-color: rgba(34, 197, 94, 0.1); color: #22C55E; font-size: 13px; font-weight: bold; border: 1px solid rgba(34, 197, 94, 0.25); border-radius: 4px; padding: 3px 12px;")
-        self.scan_last_time_lbl.setVisible(True)
-        self.scan_meta_sep1.setVisible(True)
-        self.scan_next_time_lbl.setVisible(True)
-        self.scan_meta_sep2.setVisible(True)
-        self.scan_mode_lbl.setVisible(True)
-        self.scan_mode_combo.setVisible(True)
+        self.scan_headline_lbl.setText("Ready for scheduled or on-demand scan")
+        self.scan_headline_lbl.setStyleSheet("font-size: 13px; color: #9CA3AF; margin-top: 2px; background: transparent; border: none;")
         self.scan_mode_combo.setEnabled(True)
         self.scan_progress_bar.setVisible(False)
         self.scan_progress_details_lbl.setVisible(False)
@@ -1466,7 +1473,7 @@ class DashboardPage(QWidget):
     def _set_ui_state_scanning(self, headline="Analyzing existing files..."):
         self._current_ui_scan_state = "SCANNING"
         self.scan_status_badge.setText("● SCANNING")
-        self.scan_status_badge.setStyleSheet("background-color: rgba(59, 130, 246, 0.12); color: #3B82F6; font-size: 13px; font-weight: bold; border: 1px solid rgba(59, 130, 246, 0.35); border-radius: 4px; padding: 3px 12px;")
+        self.scan_status_badge.setStyleSheet("background-color: rgba(123, 63, 242, 0.15); color: #A855F7; font-size: 13px; font-weight: bold; border: 1px solid rgba(168, 85, 247, 0.4); border-radius: 4px; padding: 3px 12px;")
         self.scan_headline_lbl.setText(headline)
         self.scan_headline_lbl.setStyleSheet("font-size: 13px; color: #E6EDF3; margin-top: 2px; background: transparent; border: none;")
         self.scan_mode_combo.setEnabled(False)

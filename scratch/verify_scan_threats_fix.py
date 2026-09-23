@@ -14,6 +14,9 @@ def main():
     if not app:
         app = QApplication(sys.argv)
 
+    from ui.theme import apply_theme
+    apply_theme(app)
+
     db = DatabaseManager()
     mgr = ExistingScanManager(db_manager=db)
 

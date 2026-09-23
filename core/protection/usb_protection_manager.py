@@ -3,6 +3,9 @@ import sys
 import time
 import hashlib
 import logging
+import uuid
+import threading
+import concurrent.futures
 from typing import Optional, Dict, Any, List, Set
 from PySide6.QtCore import QObject, QThread, Signal, QTimer
 
@@ -14,6 +17,7 @@ from core.detection.risk_engine import (
 from core.database.database import DatabaseManager
 from core.database.incidents_repository import IncidentsRepository
 from core.database.history_repository import HistoryRepository
+from core.database.usb_repository import USBRepository
 from core.protection.alert_manager import AlertManager
 
 logger = logging.getLogger("RansomGuard.USBProtection")
@@ -64,25 +68,32 @@ class USBDevice:
 
 class USBScanWorker(QThread):
     """
-    Background worker that executes the recursive initial security scan of a connected USB device.
-    Uses exclusively the shared UnifiedFileAnalyzer and RiskEngine pipeline.
+    High-performance background worker that executes multi-worker initial security scan
+    of a connected USB device using bounded thread concurrency.
+    Persists scan sessions and detailed file results into SQLite.
     """
     progress_updated = Signal(str, int, int) # (current_file_path, analyzed_count, discovered_count)
     scan_completed = Signal(dict)            # Summary dictionary
     scan_interrupted = Signal(str)          # Reason string (e.g. disconnected)
     threat_detected = Signal(dict)           # Emitted when a threat is identified
 
-    def __init__(self, target_drive: str, scan_cache: Dict[str, Any], db_manager=None):
+    def __init__(self, target_drive: str, scan_cache: Dict[str, Any], db_manager=None,
+                 device_info: Optional[Dict[str, Any]] = None):
         super(USBScanWorker, self).__init__()
         self.target_drive = target_drive.rstrip("\\") + "\\"
         self.scan_cache = scan_cache
         self.db = db_manager or DatabaseManager()
         self.inc_repo = IncidentsRepository(self.db)
         self.history_repo = HistoryRepository(self.db)
-        
+        self.usb_repo = USBRepository(self.db)
+        self.device_info = device_info or {}
+
         self.running = True
         self.interrupted_by_removal = False
-        
+        self.lock = threading.Lock()
+        self.scan_id = uuid.uuid4().hex[:12]
+        self.start_timestamp = time.time()
+
         # Real statistics counters (preserved if interrupted)
         self.files_discovered = 0
         self.files_analyzed = 0
@@ -100,13 +111,24 @@ class USBScanWorker(QThread):
             self.interrupted_by_removal = True
 
     def run(self):
-        start_time = time.time()
-        logger.info(f"USB Initial Scan starting on {self.target_drive}")
+        self.start_timestamp = time.time()
+        logger.info(f"USB Initial Scan starting on {self.target_drive} [Session {self.scan_id}]")
 
         # Check drive accessibility before beginning
         if not os.path.exists(self.target_drive):
             self.scan_interrupted.emit("Scan interrupted — USB device was disconnected.")
             return
+
+        # Record scan session in SQLite DB
+        self.usb_repo.create_session(
+            scan_id=self.scan_id,
+            drive_letter=self.target_drive.rstrip("\\"),
+            volume_name=self.device_info.get("volume_name", "Removable Disk"),
+            file_system=self.device_info.get("file_system", "Unknown"),
+            total_bytes=self.device_info.get("total_bytes", 0),
+            free_bytes=self.device_info.get("free_bytes", 0),
+            status="SCANNING"
+        )
 
         # Record scan started in audit history
         self.history_repo.insert_log(
@@ -144,44 +166,99 @@ class USBScanWorker(QThread):
             return
 
         if not self.running:
+            self._handle_cancellation()
             return
 
         self.files_discovered = len(discovered_files)
         logger.info(f"Discovered {self.files_discovered} files on USB drive {self.target_drive}")
 
-        # 2. Analyze each file through the Unified File Analyzer
+        # 2. Analyze files through Unified File Analyzer using bounded multi-worker concurrency
+        max_workers = min(16, max(4, (os.cpu_count() or 4) * 2))
         last_emit = 0.0
-        for file_path in discovered_files:
-            if not self.running:
-                break
-            
-            # Continuous hardware availability check
-            if not os.path.exists(self.target_drive):
-                self.interrupted_by_removal = True
-                break
 
-            self.currently_analyzing_path = file_path
-            record = self._analyze_usb_file(file_path, DETECTION_SOURCE_INITIAL_SCAN)
-            self.currently_analyzing_path = None
+        def _worker_task(file_path: str):
+            if not self.running or not os.path.exists(self.target_drive):
+                return None
+            return self._analyze_usb_file(file_path, DETECTION_SOURCE_INITIAL_SCAN)
 
-            if record:
-                self.records.append(record)
-                self.files_analyzed += 1
+        with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+            future_to_file = {executor.submit(_worker_task, fp): fp for fp in discovered_files}
+            for future in concurrent.futures.as_completed(future_to_file):
+                if not self.running:
+                    executor.shutdown(wait=False, cancel_futures=True)
+                    break
 
-                now = time.time()
-                if (now - last_emit > 0.03) or (self.files_analyzed == 1) or (self.files_analyzed == self.files_discovered):
-                    self.progress_updated.emit(file_path, self.files_analyzed, self.files_discovered)
-                    last_emit = now
+                if not os.path.exists(self.target_drive):
+                    self.interrupted_by_removal = True
+                    executor.shutdown(wait=False, cancel_futures=True)
+                    break
+
+                file_path = future_to_file[future]
+                try:
+                    record = future.result()
+                except Exception as ex:
+                    logger.warning(f"Error processing USB file {file_path}: {ex}")
+                    record = {
+                        "file_path": file_path,
+                        "filename": os.path.basename(file_path),
+                        "verdict": VERDICT_UNKNOWN,
+                        "severity": "LOW",
+                        "risk_score": 0,
+                        "threat_name": "Inaccessible File",
+                        "reason": f"Analysis error: {ex}",
+                        "sha256": "Not available",
+                        "file_size": 0,
+                        "file_type": "Unknown",
+                        "evidence_list": [str(ex)],
+                        "detection_source": DETECTION_SOURCE_INITIAL_SCAN
+                    }
+                    with self.lock:
+                        self.unknown_count += 1
+
+                if record:
+                    with self.lock:
+                        self.records.append(record)
+                        self.files_analyzed += 1
+                        current_count = self.files_analyzed
+
+                    # Emit threat signal on USBScanWorker QThread
+                    if record.get("verdict") in (VERDICT_SUSPICIOUS, VERDICT_MALICIOUS):
+                        self.threat_detected.emit(record)
+
+                    now = time.time()
+                    if (now - last_emit > 0.03) or (current_count == 1) or (current_count == self.files_discovered):
+                        self.currently_analyzing_path = file_path
+                        self.progress_updated.emit(file_path, current_count, self.files_discovered)
+                        last_emit = now
 
         if self.interrupted_by_removal or not os.path.exists(self.target_drive):
             self._handle_removal_interruption()
             return
 
         if not self.running:
+            self._handle_cancellation()
             return
 
-        duration = round(time.time() - start_time, 2)
+        duration = round(time.time() - self.start_timestamp, 2)
+        threats_found = self.suspicious_count + self.malicious_count
+
+        # Persist session & scan results in SQLite
+        self.usb_repo.update_session(
+            scan_id=self.scan_id,
+            status="COMPLETED",
+            discovered_count=self.files_discovered,
+            analyzed_count=self.files_analyzed,
+            clean_count=self.clean_count,
+            suspicious_count=self.suspicious_count,
+            malicious_count=self.malicious_count,
+            unknown_count=self.unknown_count,
+            threat_count=threats_found,
+            duration_sec=duration
+        )
+        self.usb_repo.save_scan_results(self.scan_id, self.records)
+
         summary = {
+            "scan_id": self.scan_id,
             "target_drive": self.target_drive,
             "duration_sec": duration,
             "files_discovered": self.files_discovered,
@@ -190,7 +267,7 @@ class USBScanWorker(QThread):
             "suspicious_count": self.suspicious_count,
             "malicious_count": self.malicious_count,
             "unknown_count": self.unknown_count,
-            "threats_found": self.suspicious_count + self.malicious_count,
+            "threats_found": threats_found,
             "records": self.records,
             "interrupted": False
         }
@@ -207,15 +284,32 @@ class USBScanWorker(QThread):
                 f"Unknown: {self.unknown_count})."
             ),
             target=self.target_drive,
-            action_taken="NO_ACTION" if (self.suspicious_count + self.malicious_count) == 0 else "USER_ALERTED"
+            action_taken="NO_ACTION" if threats_found == 0 else "USER_ALERTED"
         )
 
-        logger.info(f"USB Initial Scan completed on {self.target_drive}. Scanned {self.files_analyzed} files.")
+        logger.info(f"USB Initial Scan completed on {self.target_drive}. Scanned {self.files_analyzed} files in {duration}s.")
         self.scan_completed.emit(summary)
 
     def _handle_removal_interruption(self):
         """Handles graceful interruption if USB storage was unmounted during scan."""
         logger.warning(f"USB device {self.target_drive} was disconnected during scan.")
+        duration = round(time.time() - self.start_timestamp, 2)
+        threats_found = self.suspicious_count + self.malicious_count
+
+        self.usb_repo.update_session(
+            scan_id=self.scan_id,
+            status="INTERRUPTED",
+            discovered_count=self.files_discovered,
+            analyzed_count=self.files_analyzed,
+            clean_count=self.clean_count,
+            suspicious_count=self.suspicious_count,
+            malicious_count=self.malicious_count,
+            unknown_count=self.unknown_count,
+            threat_count=threats_found,
+            duration_sec=duration
+        )
+        self.usb_repo.save_scan_results(self.scan_id, self.records)
+
         self.history_repo.insert_log(
             event_type="USB_SCAN_INTERRUPTED",
             severity="LOW",
@@ -225,16 +319,37 @@ class USBScanWorker(QThread):
         )
         self.scan_interrupted.emit("Scan interrupted — USB device was disconnected.")
 
+    def _handle_cancellation(self):
+        """Handles manual scan cancellation by user/admin."""
+        duration = round(time.time() - self.start_timestamp, 2)
+        threats_found = self.suspicious_count + self.malicious_count
+
+        self.usb_repo.update_session(
+            scan_id=self.scan_id,
+            status="CANCELLED",
+            discovered_count=self.files_discovered,
+            analyzed_count=self.files_analyzed,
+            clean_count=self.clean_count,
+            suspicious_count=self.suspicious_count,
+            malicious_count=self.malicious_count,
+            unknown_count=self.unknown_count,
+            threat_count=threats_found,
+            duration_sec=duration
+        )
+        self.usb_repo.save_scan_results(self.scan_id, self.records)
+
     def _analyze_usb_file(self, file_path: str, detection_source: str) -> Optional[Dict[str, Any]]:
         """
         Analyzes a single file using UnifiedFileAnalyzer + RiskEngine.
         Integrates multi-point cache validation (mtime, ctime, size, prefix hash)
         to prevent stale or invalid verdict reuse.
+        Thread-safe counter increments under self.lock.
         """
         try:
             # File existence check
             if not os.path.exists(file_path):
-                self.unknown_count += 1
+                with self.lock:
+                    self.unknown_count += 1
                 return {
                     "file_path": file_path,
                     "filename": os.path.basename(file_path),
@@ -256,15 +371,15 @@ class USBScanWorker(QThread):
             current_size = stat_info.st_size
 
             # Robust cache verification:
-            # Never rely blindly on only mtime + size. Verify mtime, ctime, size, and prefix bytes.
-            cached = self.scan_cache.get(file_path)
+            # Verify mtime, ctime, size, and prefix bytes under lock.
+            with self.lock:
+                cached = self.scan_cache.get(file_path)
             if cached:
                 mtime_match = (cached.get("mtime_ns") == current_mtime_ns)
                 ctime_match = (cached.get("ctime_ns") == current_ctime_ns)
                 size_match = (cached.get("size") == current_size)
                 
                 if mtime_match and ctime_match and size_match:
-                    # Validate header chunk integrity
                     try:
                         with open(file_path, "rb") as f:
                             header_bytes = f.read(4096)
@@ -273,14 +388,15 @@ class USBScanWorker(QThread):
                             rec = cached.get("record")
                             if rec:
                                 v = rec.get("verdict")
-                                if v == VERDICT_CLEAN:
-                                    self.clean_count += 1
-                                elif v == VERDICT_SUSPICIOUS:
-                                    self.suspicious_count += 1
-                                elif v == VERDICT_MALICIOUS:
-                                    self.malicious_count += 1
-                                else:
-                                    self.unknown_count += 1
+                                with self.lock:
+                                    if v == VERDICT_CLEAN:
+                                        self.clean_count += 1
+                                    elif v == VERDICT_SUSPICIOUS:
+                                        self.suspicious_count += 1
+                                    elif v == VERDICT_MALICIOUS:
+                                        self.malicious_count += 1
+                                    else:
+                                        self.unknown_count += 1
                                 return rec
                     except Exception:
                         pass # Fall through to full re-analysis if header cannot be read
@@ -305,14 +421,15 @@ class USBScanWorker(QThread):
                 threat_name = "Unanalyzed File"
                 reason = analysis_res.error or "Unable to read file content."
 
-            if verdict == VERDICT_CLEAN:
-                self.clean_count += 1
-            elif verdict == VERDICT_SUSPICIOUS:
-                self.suspicious_count += 1
-            elif verdict == VERDICT_MALICIOUS:
-                self.malicious_count += 1
-            else:
-                self.unknown_count += 1
+            with self.lock:
+                if verdict == VERDICT_CLEAN:
+                    self.clean_count += 1
+                elif verdict == VERDICT_SUSPICIOUS:
+                    self.suspicious_count += 1
+                elif verdict == VERDICT_MALICIOUS:
+                    self.malicious_count += 1
+                else:
+                    self.unknown_count += 1
 
             record = {
                 "file_path": file_path,
@@ -322,8 +439,8 @@ class USBScanWorker(QThread):
                 "file_type": analysis_res.detected_file_type,
                 "sha256": analysis_res.sha256 or "Not available",
                 "verdict": verdict,
-                "severity": severity if verdict != VERDICT_CLEAN else "LOW",
-                "risk_score": risk_score if verdict != VERDICT_CLEAN else 0,
+                "severity": severity,
+                "risk_score": risk_score,
                 "threat_name": threat_name,
                 "reason": reason,
                 "evidence_list": analysis_res.evidence_list,
@@ -339,21 +456,21 @@ class USBScanWorker(QThread):
             except Exception:
                 prefix_hash = ""
 
-            # Cache with complete integrity tuple
-            self.scan_cache[file_path] = {
-                "mtime_ns": current_mtime_ns,
-                "ctime_ns": current_ctime_ns,
-                "size": current_size,
-                "prefix_hash": prefix_hash,
-                "sha256": analysis_res.sha256,
-                "verdict": verdict,
-                "record": record
-            }
+            # Cache with complete integrity tuple under lock
+            with self.lock:
+                self.scan_cache[file_path] = {
+                    "mtime_ns": current_mtime_ns,
+                    "ctime_ns": current_ctime_ns,
+                    "size": current_size,
+                    "prefix_hash": prefix_hash,
+                    "sha256": analysis_res.sha256,
+                    "verdict": verdict,
+                    "record": record
+                }
 
             # If threat is detected (SUSPICIOUS or MALICIOUS), register incident & alert
             if verdict in (VERDICT_SUSPICIOUS, VERDICT_MALICIOUS):
                 self._dispatch_threat_incident(record)
-                self.threat_detected.emit(record)
 
             return record
 
@@ -464,6 +581,7 @@ class USBProtectionManager(QObject):
         self.db = db_manager or DatabaseManager()
         self.history_repo = HistoryRepository(self.db)
         self.inc_repo = IncidentsRepository(self.db)
+        self.usb_repo = USBRepository(self.db)
         
         # State tracking
         self.connected_devices: Dict[str, USBDevice] = {}
@@ -488,6 +606,14 @@ class USBProtectionManager(QObject):
 
         # Initial fast check from cache, then trigger background refresh
         self.check_usb_devices()
+
+    def get_scan_history(self, limit: int = 20) -> List[Dict[str, Any]]:
+        """Returns recent USB scan sessions from SQLite database."""
+        return self.usb_repo.get_recent_sessions(limit)
+
+    def get_session_details(self, scan_id: str) -> List[Dict[str, Any]]:
+        """Returns detailed file scan records for a specific USB scan session."""
+        return self.usb_repo.get_session_results(scan_id)
 
     def _trigger_async_check(self):
         """Dispatches non-blocking background drive check."""
@@ -618,7 +744,10 @@ class USBProtectionManager(QObject):
             device.status = "Scanning"
 
         self.active_scan_drive = drive_letter.upper()
-        self.active_worker = USBScanWorker(drive_letter, self.scan_cache, self.db)
+        device_dict = device.to_dict() if device else {}
+        self.active_worker = USBScanWorker(
+            drive_letter, self.scan_cache, self.db, device_info=device_dict
+        )
         self.active_worker.progress_updated.connect(self._on_worker_progress)
         self.active_worker.scan_completed.connect(self._on_worker_completed)
         self.active_worker.scan_interrupted.connect(self._on_worker_interrupted)
@@ -760,8 +889,8 @@ class USBProtectionManager(QObject):
                 "file_type": analysis_res.detected_file_type,
                 "sha256": analysis_res.sha256 or "Not available",
                 "verdict": verdict,
-                "severity": severity if verdict != VERDICT_CLEAN else "LOW",
-                "risk_score": risk_score if verdict != VERDICT_CLEAN else 0,
+                "severity": severity,
+                "risk_score": risk_score,
                 "threat_name": threat_name,
                 "reason": reason,
                 "evidence_list": analysis_res.evidence_list,

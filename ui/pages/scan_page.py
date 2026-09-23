@@ -1,5 +1,6 @@
 import os
 import time
+import hashlib
 from typing import Optional, Dict, Any, List
 
 from PySide6.QtWidgets import (
@@ -8,7 +9,12 @@ from PySide6.QtWidgets import (
     QGridLayout, QScrollArea, QSizePolicy
 )
 from PySide6.QtCore import Qt, QEvent, Signal
+from PySide6.QtGui import QPixmap, QIcon
+
 from core.scanning.scanner import BackgroundScanner
+from core.scanning.image_scan_worker import ImageScanWorker
+from core.scanning.image_text_finder import SUPPORTED_FORMATS
+from ui.components.image_analysis_dialog import ImageAnalysisDetailsDialog
 from ui.components.tables import ScanResultsTableModel, format_file_size
 from core.database.database import DatabaseManager
 from core.database.incidents_repository import IncidentsRepository
@@ -21,6 +27,9 @@ class ScanPage(QWidget):
         self.db = db_manager or DatabaseManager()
         self.inc_repo = IncidentsRepository(self.db)
         self.current_record = None
+        self.scan_mode = "FILE_SECURITY" # "FILE_SECURITY" or "IMAGE_TEXT"
+        self.image_worker = None
+        self.current_image_result = None
         
         # Outer layout: Houses the single main vertical scroll area
         self.main_layout = QVBoxLayout(self)
@@ -35,28 +44,7 @@ class ScanPage(QWidget):
         self.scroll_area.setFrameShape(QFrame.NoFrame)
         self.scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        self.scroll_area.setStyleSheet("""
-            QScrollArea {
-                border: none;
-                background-color: transparent;
-            }
-            QScrollBar:vertical {
-                background-color: #0B0F14;
-                width: 10px;
-                margin: 0px;
-            }
-            QScrollBar::handle:vertical {
-                background-color: #2D3748;
-                min-height: 30px;
-                border-radius: 4px;
-            }
-            QScrollBar::handle:vertical:hover {
-                background-color: #4B5563;
-            }
-            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
-                height: 0px;
-            }
-        """)
+        self.scroll_area.setStyleSheet("QScrollArea { border: none; background-color: transparent; }")
 
         # Scrollable inner content widget containing all 4 sections in order
         self.scroll_content = QWidget()
@@ -64,6 +52,63 @@ class ScanPage(QWidget):
         self.content_layout = QVBoxLayout(self.scroll_content)
         self.content_layout.setContentsMargins(20, 20, 20, 20)
         self.content_layout.setSpacing(16)
+
+        # -------------------------------------------------------------
+        # Mode Selection Bar (Target Security Scan vs Image Hidden Text Finder)
+        # -------------------------------------------------------------
+        self.mode_card = QFrame(self.scroll_content)
+        self.mode_card.setStyleSheet("""
+            QFrame {
+                background-color: #0D1422;
+                border: 1px solid #1A2940;
+                border-radius: 6px;
+                padding: 4px;
+            }
+        """)
+        mode_layout = QHBoxLayout(self.mode_card)
+        mode_layout.setContentsMargins(4, 4, 4, 4)
+        mode_layout.setSpacing(8)
+
+        self.btn_mode_security = QPushButton("🎯 File & Folder Security Scan", self.mode_card)
+        self.btn_mode_security.setCursor(Qt.PointingHandCursor)
+        self.btn_mode_security.setStyleSheet("""
+            QPushButton {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #168BFF, stop:1 #38A8FF);
+                color: #FFFFFF;
+                border: 1px solid #168BFF;
+                border-radius: 4px;
+                padding: 6px 16px;
+                font-weight: bold;
+                font-size: 12px;
+            }
+        """)
+        self.btn_mode_security.clicked.connect(self._on_mode_security_clicked)
+
+        self.btn_mode_image_text = QPushButton("🖼️ Image Hidden Text Finder", self.mode_card)
+        self.btn_mode_image_text.setCursor(Qt.PointingHandCursor)
+        self.btn_mode_image_text.setStyleSheet("""
+            QPushButton {
+                background-color: #111A2B;
+                color: #A9B8D4;
+                border: 1px solid #1A2940;
+                border-radius: 4px;
+                padding: 6px 16px;
+                font-weight: 600;
+                font-size: 12px;
+            }
+            QPushButton:hover {
+                background-color: #17233A;
+                color: #FFFFFF;
+                border-color: #21334D;
+            }
+        """)
+        self.btn_mode_image_text.clicked.connect(self._on_mode_image_text_clicked)
+
+        mode_layout.addWidget(self.btn_mode_security)
+        mode_layout.addWidget(self.btn_mode_image_text)
+        mode_layout.addStretch()
+
+        self.content_layout.addWidget(self.mode_card)
 
         # -------------------------------------------------------------
         # Section 1: TARGET FOLDER / FILE SECURITY SCAN (Configuration Card)
@@ -127,16 +172,16 @@ class ScanPage(QWidget):
         self.progress_bar = QProgressBar(self.progress_card)
         self.progress_bar.setStyleSheet("""
             QProgressBar {
-                border: 1px solid #2B313A;
+                border: 1px solid #1A2940;
                 border-radius: 4px;
                 text-align: center;
-                background-color: #161B22;
+                background-color: #0D1422;
                 height: 18px;
                 color: #FFFFFF;
                 font-weight: bold;
             }
             QProgressBar::chunk {
-                background-color: #3B82F6;
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #168BFF, stop:1 #38A8FF);
                 border-radius: 3px;
             }
         """)
@@ -158,8 +203,8 @@ class ScanPage(QWidget):
         self.single_card.setObjectName("scanEvidenceCard")
         self.single_card.setStyleSheet("""
             QFrame#scanEvidenceCard {
-                background-color: #10161D;
-                border: 1px solid #1C2630;
+                background-color: #0D1422;
+                border: 1px solid #1A2940;
                 border-radius: 6px;
                 padding: 10px 14px;
             }
@@ -194,13 +239,13 @@ class ScanPage(QWidget):
 
         self.single_source_badge = QLabel("Source: Scan Center", self.single_card)
         self.single_source_badge.setStyleSheet("""
-            background-color: #16202B;
-            color: #38BDF8;
+            background-color: #111A2B;
+            color: #A855F7;
             font-size: 11px;
             font-weight: 600;
             padding: 3px 8px;
             border-radius: 4px;
-            border: 1px solid #1C2630;
+            border: 1px solid #1A2940;
         """)
         header_row.addWidget(self.single_source_badge)
 
@@ -210,17 +255,18 @@ class ScanPage(QWidget):
         self.btn_investigate = QPushButton("🔍 Investigate in Threat Repository →", self.single_card)
         self.btn_investigate.setStyleSheet("""
             QPushButton {
-                background-color: #1E3A5F;
-                color: #60A5FA;
-                border: 1px solid #2563EB;
+                background-color: #111A2B;
+                color: #38A8FF;
+                border: 1px solid #1A2940;
                 border-radius: 4px;
                 padding: 4px 12px;
                 font-size: 11px;
                 font-weight: 600;
             }
             QPushButton:hover {
-                background-color: #2563EB;
-                color: #FFFFFF;
+                background-color: #17233A;
+                color: #70BFFF;
+                border-color: #355B8A;
             }
         """)
         self.btn_investigate.setCursor(Qt.PointingHandCursor)
@@ -293,9 +339,9 @@ class ScanPage(QWidget):
         self.reason_frame = QFrame(self.single_card)
         self.reason_frame.setStyleSheet("""
             QFrame {
-                background-color: #0D1218;
-                border: 1px solid #1C2630;
-                border-left: 3px solid #F59E0B;
+                background-color: #111A2B;
+                border: 1px solid #1A2940;
+                border-left: 3px solid #FFB84D;
                 border-radius: 4px;
                 padding: 5px 8px;
             }
@@ -325,10 +371,10 @@ class ScanPage(QWidget):
         self.single_evidence_view.setLineWrapMode(QTextEdit.WidgetWidth)
         self.single_evidence_view.setStyleSheet("""
             QTextEdit {
-                background-color: #0D1218;
-                border: 1px solid #1C2630;
+                background-color: #111A2B;
+                border: 1px solid #1A2940;
                 border-radius: 4px;
-                color: #CBD5E1;
+                color: #F4F7FF;
                 font-family: Consolas;
                 font-size: 11px;
                 padding: 6px 8px;
@@ -357,8 +403,8 @@ class ScanPage(QWidget):
         self.empty_state_container.setObjectName("scanEmptyStateContainer")
         self.empty_state_container.setStyleSheet("""
             QFrame#scanEmptyStateContainer {
-                background-color: #0D1218;
-                border: 1px dashed #1E293B;
+                background-color: #0D1422;
+                border: 1px dashed #1A2940;
                 border-radius: 6px;
                 padding: 16px 14px;
             }
@@ -430,6 +476,81 @@ class ScanPage(QWidget):
         self.current_ui_state = "INITIAL"
         self._set_ui_state("INITIAL")
 
+    def _on_mode_security_clicked(self):
+        self.scan_mode = "FILE_SECURITY"
+        self.btn_mode_security.setStyleSheet("""
+            QPushButton {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #168BFF, stop:1 #38A8FF);
+                color: #FFFFFF;
+                border: 1px solid #168BFF;
+                border-radius: 4px;
+                padding: 6px 16px;
+                font-weight: bold;
+                font-size: 12px;
+            }
+        """)
+        self.btn_mode_image_text.setStyleSheet("""
+            QPushButton {
+                background-color: #111A2B;
+                color: #A9B8D4;
+                border: 1px solid #1A2940;
+                border-radius: 4px;
+                padding: 6px 16px;
+                font-weight: 600;
+                font-size: 12px;
+            }
+            QPushButton:hover {
+                background-color: #17233A;
+                color: #FFFFFF;
+                border-color: #21334D;
+            }
+        """)
+        self.card_title.setText("🔍 TARGET FOLDER / FILE SECURITY SCAN")
+        self.select_folder_btn.setVisible(True)
+        self.select_file_btn.setText("📄 Browse File...")
+        self.start_scan_btn.setText("🚀 Run Security Scan")
+        self.results_title.setText("🔍 SCAN RESULTS & EVIDENCE AUDIT")
+        self._set_ui_state("INITIAL")
+
+    def _on_mode_image_text_clicked(self):
+        self.scan_mode = "IMAGE_TEXT"
+        self.btn_mode_image_text.setStyleSheet("""
+            QPushButton {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #168BFF, stop:1 #38A8FF);
+                color: #FFFFFF;
+                border: 1px solid #168BFF;
+                border-radius: 4px;
+                padding: 6px 16px;
+                font-weight: bold;
+                font-size: 12px;
+            }
+        """)
+        self.btn_mode_security.setStyleSheet("""
+            QPushButton {
+                background-color: #111A2B;
+                color: #A9B8D4;
+                border: 1px solid #1A2940;
+                border-radius: 4px;
+                padding: 6px 16px;
+                font-weight: 600;
+                font-size: 12px;
+            }
+            QPushButton:hover {
+                background-color: #17233A;
+                color: #FFFFFF;
+                border-color: #21334D;
+            }
+        """)
+        self.card_title.setText("🖼️ IMAGE HIDDEN TEXT FINDER")
+        self.select_folder_btn.setVisible(False)
+        self.select_file_btn.setText("🖼️ Select Image...")
+        self.start_scan_btn.setText("🚀 Run Image Text Analysis")
+        self.results_title.setText("🖼️ IMAGE ANALYSIS RESULTS & EVIDENCE")
+        self._set_ui_state("INITIAL")
+        self.empty_icon.setText("🖼️")
+        self.empty_title.setText("Ready for Image Hidden Text Analysis")
+        self.empty_desc.setText("Select an image above (PNG, JPG, BMP, TIFF, WEBP) to begin real hidden text analysis.")
+
     def _set_ui_state(self, state: str):
         """Manages Scan Center UI states: INITIAL, TARGET_SELECTED, SCANNING, COMPLETED."""
         self.current_ui_state = state
@@ -441,9 +562,9 @@ class ScanPage(QWidget):
             self.progress_card.setVisible(False)
             self.single_card.setVisible(False)
             self.empty_state_container.setVisible(True)
-            self.empty_icon.setText("🔍")
-            self.empty_title.setText("Ready to Scan")
-            self.empty_desc.setText("Select a folder or file above to begin a security scan.")
+            self.empty_icon.setText("🖼️" if self.scan_mode == "IMAGE_TEXT" else "🔍")
+            self.empty_title.setText("Ready for Image Hidden Text Analysis" if self.scan_mode == "IMAGE_TEXT" else "Ready to Scan")
+            self.empty_desc.setText("Select an image above to begin real hidden text analysis." if self.scan_mode == "IMAGE_TEXT" else "Select a folder or file above to begin a security scan.")
             self.empty_hint.setText("No scan results are available yet.")
             self.table_view.setVisible(False)
             self.empty_label.hide()
@@ -455,10 +576,11 @@ class ScanPage(QWidget):
             self.single_card.setVisible(False)
             self.empty_state_container.setVisible(True)
             is_dir = self.scan_target and os.path.isdir(self.scan_target)
-            self.empty_icon.setText("📁" if is_dir else "📄")
+            self.empty_icon.setText("🖼️" if self.scan_mode == "IMAGE_TEXT" else ("📁" if is_dir else "📄"))
             self.empty_title.setText("Ready to Scan")
             target_name = os.path.basename(self.scan_target) if self.scan_target else "Selected target"
-            self.empty_desc.setText(f"Target selected: '{target_name}'. Click 'Run Security Scan' above to begin.")
+            btn_txt = "Run Image Text Analysis" if self.scan_mode == "IMAGE_TEXT" else "Run Security Scan"
+            self.empty_desc.setText(f"Target selected: '{target_name}'. Click '{btn_txt}' above to begin.")
             self.empty_hint.setText("No scan results are available yet.")
             self.table_view.setVisible(False)
             self.empty_label.hide()
@@ -471,7 +593,7 @@ class ScanPage(QWidget):
             self.progress_card.setVisible(True)
             self.single_card.setVisible(False)
             self.empty_state_container.setVisible(False)
-            self.table_view.setVisible(True)
+            self.table_view.setVisible(self.scan_mode != "IMAGE_TEXT")
 
         elif state == "COMPLETED":
             self.start_scan_btn.setEnabled(True)
@@ -480,7 +602,7 @@ class ScanPage(QWidget):
             self.cancel_scan_btn.setVisible(False)
             self.progress_card.setVisible(True)
             self.empty_state_container.setVisible(False)
-            self.table_view.setVisible(True)
+            self.table_view.setVisible(self.scan_mode != "IMAGE_TEXT")
 
     def _select_folder(self):
         folder = QFileDialog.getExistingDirectory(self, "Select Directory to Scan")
@@ -491,48 +613,183 @@ class ScanPage(QWidget):
             self._set_ui_state("TARGET_SELECTED")
 
     def _select_file(self):
-        file, _ = QFileDialog.getOpenFileName(self, "Select File to Scan")
-        if file:
-            self.scan_target = os.path.normpath(file)
-            self.path_label.setText(f"<b>Target Path</b>: {self.scan_target} (File)")
-            self.table_model.clear()
-            self._set_ui_state("TARGET_SELECTED")
+        if self.scan_mode == "IMAGE_TEXT":
+            file_path, _ = QFileDialog.getOpenFileName(
+                self, "Select Image for Hidden Text Analysis", "",
+                "Supported Image Files (*.png *.jpg *.jpeg *.bmp *.tiff *.tif *.webp);;PNG Files (*.png);;JPEG Files (*.jpg *.jpeg);;Bitmap Files (*.bmp);;TIFF Files (*.tiff *.tif);;WEBP Files (*.webp);;All Files (*.*)"
+            )
+            if file_path:
+                self.scan_target = os.path.normpath(file_path)
+                ext = os.path.splitext(self.scan_target)[1].lstrip(".").upper()
+                if ext not in SUPPORTED_FORMATS and ext != "MPO":
+                    self.path_label.setText(
+                        f"<b>Target Image</b>: {os.path.basename(self.scan_target)} — "
+                        "<span style='color: #EF4444; font-weight: bold;'>Unsupported image format</span>"
+                    )
+                    self.start_scan_btn.setEnabled(False)
+                    return
+
+                try:
+                    file_size = os.path.getsize(self.scan_target)
+                    from PIL import Image
+                    with Image.open(self.scan_target) as img:
+                        w, h = img.size
+                        fmt = img.format or ext
+                        mode = img.mode
+                    dim_str = f"{w} x {h}"
+                except Exception:
+                    dim_str = "Unknown dimensions"
+                    file_size = 0
+                    fmt = ext
+
+                self.path_label.setText(
+                    f"<b>Target Image</b>: {os.path.basename(self.scan_target)}<br>"
+                    f"<span style='color: #94A3B8; font-size: 11px; font-family: Consolas;'>"
+                    f"Path: {self.scan_target} | Format: {fmt} | Dimensions: {dim_str} | Size: {file_size:,} bytes</span>"
+                )
+                self.table_model.clear()
+                self._set_ui_state("TARGET_SELECTED")
+                self.empty_icon.setText("🖼️")
+                self.empty_title.setText("Image Ready for Analysis")
+                self.empty_desc.setText(f"Target selected: '{os.path.basename(self.scan_target)}'. Click 'Run Image Text Analysis' above to begin.")
+        else:
+            file, _ = QFileDialog.getOpenFileName(self, "Select File to Scan")
+            if file:
+                self.scan_target = os.path.normpath(file)
+                self.path_label.setText(f"<b>Target Path</b>: {self.scan_target} (File)")
+                self.table_model.clear()
+                self._set_ui_state("TARGET_SELECTED")
 
     def _start_scan(self):
         if not self.scan_target:
             return
 
-        self._set_ui_state("SCANNING")
+        if self.scan_mode == "IMAGE_TEXT":
+            self._set_ui_state("SCANNING")
+            self.table_model.clear()
+            self.progress_bar.setValue(0)
+            self.progress_bar.setRange(0, 100)
+            self.progress_title.setText("Image Analysis Status: RUNNING...")
+            self.current_file_label.setText(f"Analyzing image {self.scan_target}...")
+            self.empty_label.setText("Analyzing image structure & text...")
+            self.empty_label.setStyleSheet("color: #94A3B8; font-size: 13px; font-weight: bold;")
+            self.empty_label.show()
 
-        # Prepare UI
-        self.table_model.clear()
-        self.progress_bar.setValue(0)
-        self.progress_bar.setRange(0, 0) # Indeterminate mode until we start processing
-        self.progress_title.setText("Scan Telemetry Status: RUNNING...")
-        self.current_file_label.setText(f"Initializing scan on {self.scan_target}...")
-        self.empty_label.setText("Analyzing files...")
-        self.empty_label.setStyleSheet("color: #94A3B8; font-size: 13px; font-weight: bold;")
-        self.empty_label.show()
-        self._update_table_view_height()
+            self.image_worker = ImageScanWorker(self.scan_target, db_manager=self.db, parent=self)
+            self.image_worker.progress_updated.connect(self._on_image_progress_updated)
+            self.image_worker.scan_completed.connect(self._on_image_scan_completed)
+            self.image_worker.scan_failed.connect(self._on_scan_error)
+            self.image_worker.start()
+        else:
+            self._set_ui_state("SCANNING")
+            self.table_model.clear()
+            self.progress_bar.setValue(0)
+            self.progress_bar.setRange(0, 0) # Indeterminate mode until we start processing
+            self.progress_title.setText("Scan Telemetry Status: RUNNING...")
+            self.current_file_label.setText(f"Initializing scan on {self.scan_target}...")
+            self.empty_label.setText("Analyzing files...")
+            self.empty_label.setStyleSheet("color: #94A3B8; font-size: 13px; font-weight: bold;")
+            self.empty_label.show()
+            self._update_table_view_height()
 
-        # Start background worker
-        self.scanner = BackgroundScanner(self.scan_target, recursive=True, db_manager=self.db)
-        self.scanner.progress_updated.connect(self._on_progress_updated)
-        self.scanner.scan_completed.connect(self._on_scan_completed)
-        self.scanner.scan_error.connect(self._on_scan_error)
-        self.scanner.start()
+            # Start background worker
+            self.scanner = BackgroundScanner(self.scan_target, recursive=True, db_manager=self.db)
+            self.scanner.progress_updated.connect(self._on_progress_updated)
+            self.scanner.scan_completed.connect(self._on_scan_completed)
+            self.scanner.scan_error.connect(self._on_scan_error)
+            self.scanner.start()
 
     def _cancel_scan(self):
-        if self.scanner:
-            self.scanner.stop()
-            self.scanner.wait()
-            self._reset_ui_idle()
-            self.progress_title.setText("Scan Telemetry Status: CANCELLED")
-            if self.table_model.rowCount() == 0:
-                self._set_ui_state("TARGET_SELECTED" if self.scan_target else "INITIAL")
-                self.progress_card.setVisible(True)
-            else:
-                self._set_ui_state("COMPLETED")
+        if self.scan_mode == "IMAGE_TEXT":
+            if self.image_worker:
+                self.image_worker.cancel()
+                self.image_worker.wait()
+                self._reset_ui_idle()
+                self.progress_title.setText("Image Analysis Status: CANCELLED")
+        else:
+            if self.scanner:
+                self.scanner.stop()
+                self.scanner.wait()
+                self._reset_ui_idle()
+                self.progress_title.setText("Scan Telemetry Status: CANCELLED")
+                if self.table_model.rowCount() == 0:
+                    self._set_ui_state("TARGET_SELECTED" if self.scan_target else "INITIAL")
+                    self.progress_card.setVisible(True)
+                else:
+                    self._set_ui_state("COMPLETED")
+
+    def _on_image_progress_updated(self, stage_name: str, percent: int):
+        self.progress_bar.setRange(0, 100)
+        self.progress_bar.setValue(percent)
+        self.progress_title.setText(f"Image Analysis Status: {stage_name} ({percent}%)")
+        self.current_file_label.setText(f"Target: {self.scan_target}")
+
+    def _on_image_scan_completed(self, result: Dict[str, Any]):
+        self._reset_ui_idle()
+        self.current_ui_state = "COMPLETED"
+        self.current_image_result = result
+        if hasattr(self, "empty_state_container"):
+            self.empty_state_container.setVisible(False)
+
+        cat = result.get("category", "UNABLE TO DETERMINE")
+        self.progress_title.setText(f"Image Analysis Complete in {result.get('duration_sec', 0)}s — Category: {cat}")
+        self.current_file_label.setText("Image text & steganography analysis completed successfully.")
+
+        self._show_image_result_card(result)
+
+    def _show_image_result_card(self, result: Dict[str, Any]):
+        self.single_card.setVisible(True)
+        cat = result.get("category", "UNABLE TO DETERMINE")
+
+        if "HIDDEN" in cat:
+            badge_style = "background-color: rgba(245, 158, 11, 0.2); color: #F59E0B; font-weight: bold; font-size: 11px; padding: 3px 8px; border-radius: 4px; border: 1px solid #F59E0B;"
+        elif "EMBEDDED" in cat:
+            badge_style = "background-color: rgba(56, 189, 248, 0.2); color: #38BDF8; font-weight: bold; font-size: 11px; padding: 3px 8px; border-radius: 4px; border: 1px solid #38BDF8;"
+        else:
+            badge_style = "background-color: rgba(34, 197, 94, 0.2); color: #22C55E; font-weight: bold; font-size: 11px; padding: 3px 8px; border-radius: 4px; border: 1px solid #22C55E;"
+
+        self.single_title.setText("🖼️ IMAGE HIDDEN TEXT FINDER RESULTS")
+        self.single_verdict_badge.setText(f"CATEGORY: {cat}")
+        self.single_verdict_badge.setStyleSheet(badge_style)
+        self.single_risk_badge.setText("Risk: - (Finding)")
+        self.single_source_badge.setText("Source: Scan Center (Image Hidden Text)")
+
+        self.btn_investigate.setText("🔍 View Detailed Report →")
+        self.btn_investigate.setVisible(True)
+        try:
+            self.btn_investigate.clicked.disconnect()
+        except Exception:
+            pass
+        self.btn_investigate.clicked.connect(self._on_view_image_details_clicked)
+
+        self.val_filename.setText(result.get("filename", "-"))
+        self.val_path.setText(result.get("file_path", "-"))
+        self.val_size.setText(f"{result.get('file_size', 0):,} bytes")
+        self.val_type.setText(f"{result.get('file_format', '-')} ({result.get('dimensions', '-')})")
+        self.val_verdict.setText(cat)
+        self.val_risk.setText("N/A (Analysis Finding)")
+        self.val_source.setText("Scan Center (Image Hidden Text)")
+        self.val_rule.setText(result.get("detection_method", "Image Pipeline"))
+        self.val_sha256.setText(result.get("sha256", "N/A"))
+
+        reason_str = (
+            f"<b>Visible Text</b>: {result.get('visible_text', 'None')}<br>"
+            f"<b>Hidden Text</b>: {result.get('hidden_text', 'None')}"
+        )
+        self.val_reason.setText(reason_str)
+
+        evidence_content = (
+            f"=== VISIBLE TEXT ===\n{result.get('visible_text')}\n\n"
+            f"=== HIDDEN / CONCEALED TEXT ===\n{result.get('hidden_text')}\n\n"
+            f"=== METHODOLOGY ===\n{result.get('detection_method')}\n\n"
+            f"=== SECURITY INTERPRETATION ===\n{result.get('security_interpretation')}"
+        )
+        self.single_evidence_view.setPlainText(evidence_content)
+
+    def _on_view_image_details_clicked(self):
+        if self.current_image_result:
+            dlg = ImageAnalysisDetailsDialog(self.current_image_result, parent=self)
+            dlg.exec()
 
     def _on_progress_updated(self, file_path, files_scanned, threats_found):
         # Update progress details
@@ -645,8 +902,8 @@ class ScanPage(QWidget):
         reason = rec.get("reason") or ("No security threat detected." if verdict == "CLEAN" else "Suspicious indicator flagged.")
         self.reason_frame.setStyleSheet(f"""
             QFrame {{
-                background-color: #0D1218;
-                border: 1px solid #1C2630;
+                background-color: #111A2B;
+                border: 1px solid #1A2940;
                 border-left: 3px solid {border_color};
                 border-radius: 4px;
                 padding: 5px 8px;

@@ -89,6 +89,63 @@ class FileAnalysisResult:
             "accessible": self.accessible
         }
 
+    def to_detection_result(self, source: str = "Scan Center") -> Dict[str, Any]:
+        """Converts FileAnalysisResult into normalized DetectionResult format."""
+        from core.detection.detection_result import DetectionResult
+        from core.detection.risk_engine import RiskEngine
+
+        risk_eval = RiskEngine.evaluate_evidence({
+            "static_indicators": self.static_indicators,
+            "is_known_hash": self.reputation_status == "Known Malicious",
+            "is_accessible": self.accessible,
+            "has_errors": bool(self.error)
+        })
+
+        # Process YARA results
+        if isinstance(self.yara_matches, dict):
+            yara_data = self.yara_matches
+        else:
+            yara_data = {
+                "status": self.yara_status,
+                "matches_count": len(self.yara_matches) if isinstance(self.yara_matches, list) else 0,
+                "matched_rules": self.yara_matches if isinstance(self.yara_matches, list) else [],
+                "details": f"YARA Analysis: {self.yara_status}"
+            }
+
+        # Process Threat Intel results
+        intel_data = self.reputation_result or {
+            "provider": "RansomGuard Threat Intel",
+            "indicator": self.sha256 or "",
+            "status": self.reputation_status or "Not Checked",
+            "confidence": "N/A",
+            "first_seen": "N/A",
+            "last_seen": "N/A",
+            "details": "No threat intelligence lookup performed."
+        }
+
+        det_res = DetectionResult(
+            source=source,
+            artifact_type="FILE",
+            artifact_path=self.path,
+            detection_type=risk_eval.get("detection_type", "Static File Finding"),
+            severity=risk_eval.get("severity", "LOW"),
+            risk_score=risk_eval.get("risk_score", 0),
+            evidence=self.evidence_list,
+            applied_rules=self.static_indicators,
+            yara_results=yara_data,
+            threat_intelligence=intel_data,
+            file_telemetry={
+                "file_name": self.filename,
+                "full_path": self.path,
+                "sha256": self.sha256,
+                "md5": self.md5,
+                "file_size": self.size,
+                "file_type": self.detected_file_type,
+                "pe_info": self.pe_info
+            }
+        )
+        return det_res.to_dict()
+
 
 class UnifiedFileAnalyzer:
     """
@@ -214,9 +271,60 @@ class UnifiedFileAnalyzer:
                 result.evidence_list.append(f"Indicator observed: Filename '{result.filename}' matches typical ransom note naming pattern.")
                 break
 
-        # 9. Explicit Capability Declarations
-        result.evidence_list.append("YARA signature analysis: NOT_CONFIGURED (Engine not installed)")
-        result.evidence_list.append("Cloud reputation lookup: NOT_AVAILABLE (No remote provider configured)")
+        # 9. YARA Rule Analysis
+        try:
+            from core.analysis.yara_engine import YaraRuleEngine
+            yara_res = YaraRuleEngine.scan_file(file_path)
+            result.yara_status = yara_res.status
+            result.yara_matches = yara_res.to_dict()
+
+            if yara_res.status == "Matched":
+                for m in yara_res.matches:
+                    result.static_indicators.append({
+                        "rule_name": f"YARA_{m.rule_name.upper()}",
+                        "severity": m.severity,
+                        "threat_name": f"YARA Match: {m.rule_name}",
+                        "reason": f"YARA signature rule '{m.rule_name}' matched file contents: {m.evidence}",
+                        "evidence_type": "STATIC_YARA_MATCH"
+                    })
+                    result.evidence_list.append(f"YARA Match: Rule '{m.rule_name}' matched file ({m.evidence})")
+            else:
+                result.evidence_list.append(f"YARA Rule Analysis: {yara_res.details}")
+        except Exception as e:
+            result.yara_status = "Error"
+            result.evidence_list.append(f"YARA signature analysis error: {e}")
+
+        # 10. Threat Intelligence Lookup
+        try:
+            from core.analysis.threat_intel_service import ThreatIntelligenceService
+            intel_service = ThreatIntelligenceService()
+            intel_res = intel_service.lookup_hash(result.sha256)
+            result.reputation_status = intel_res.status
+            result.reputation_result = intel_res.to_dict()
+
+            if intel_res.status == "Known Malicious":
+                result.static_indicators.append({
+                    "rule_name": "KNOWN_MALICIOUS_REPUTATION",
+                    "severity": "CRITICAL",
+                    "threat_name": intel_res.malware_family,
+                    "reason": f"Threat Intelligence ({intel_res.provider}): Known Malicious — {intel_res.details}",
+                    "evidence_type": "THREAT_INTEL_REPUTATION"
+                })
+                result.evidence_list.append(f"Threat Intelligence CRITICAL: Known Malicious ({intel_res.provider}) — {intel_res.details}")
+            elif intel_res.status == "Known Suspicious":
+                result.static_indicators.append({
+                    "rule_name": "KNOWN_SUSPICIOUS_REPUTATION",
+                    "severity": "MEDIUM",
+                    "threat_name": intel_res.malware_family,
+                    "reason": f"Threat Intelligence ({intel_res.provider}): Known Suspicious — {intel_res.details}",
+                    "evidence_type": "THREAT_INTEL_REPUTATION"
+                })
+                result.evidence_list.append(f"Threat Intelligence INDICATOR: Known Suspicious ({intel_res.provider}) — {intel_res.details}")
+            else:
+                result.evidence_list.append(f"Threat Intelligence ({intel_res.provider}): {intel_res.status} — {intel_res.details}")
+        except Exception as e:
+            result.reputation_status = "Lookup Failed"
+            result.evidence_list.append(f"Threat Intelligence lookup error: {e}")
 
         return result
 

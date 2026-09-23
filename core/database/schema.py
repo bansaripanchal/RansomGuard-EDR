@@ -130,6 +130,83 @@ SCHEMA_TABLES = [
         evidence TEXT,
         FOREIGN KEY(scan_id) REFERENCES existing_scan_sessions(scan_id) ON DELETE CASCADE
     );
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS usb_scan_sessions (
+        scan_id TEXT PRIMARY KEY,
+        drive_letter TEXT NOT NULL,
+        volume_name TEXT,
+        file_system TEXT,
+        total_bytes INTEGER DEFAULT 0,
+        free_bytes INTEGER DEFAULT 0,
+        start_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+        end_time DATETIME,
+        status TEXT NOT NULL,
+        discovered_count INTEGER DEFAULT 0,
+        analyzed_count INTEGER DEFAULT 0,
+        clean_count INTEGER DEFAULT 0,
+        suspicious_count INTEGER DEFAULT 0,
+        malicious_count INTEGER DEFAULT 0,
+        unknown_count INTEGER DEFAULT 0,
+        threat_count INTEGER DEFAULT 0,
+        duration_sec REAL DEFAULT 0.0
+    );
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS usb_scan_results (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        scan_id TEXT NOT NULL,
+        file_path TEXT NOT NULL,
+        filename TEXT,
+        verdict TEXT NOT NULL,
+        severity TEXT,
+        risk_score INTEGER,
+        threat_name TEXT,
+        reason TEXT,
+        sha256 TEXT,
+        file_size INTEGER,
+        file_type TEXT,
+        evidence TEXT,
+        detection_source TEXT DEFAULT 'USB Initial Scan',
+        detection_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY(scan_id) REFERENCES usb_scan_sessions(scan_id) ON DELETE CASCADE
+    );
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS image_hidden_text_scans (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        scan_id TEXT NOT NULL,
+        file_path TEXT NOT NULL,
+        filename TEXT,
+        sha256 TEXT,
+        file_size INTEGER,
+        file_format TEXT,
+        dimensions TEXT,
+        scan_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+        status TEXT NOT NULL,
+        category TEXT NOT NULL,
+        visible_text TEXT,
+        hidden_text TEXT,
+        detection_method TEXT,
+        metadata_json TEXT,
+        channel_findings TEXT,
+        embedded_data_indicators TEXT,
+        security_interpretation TEXT,
+        duration_sec REAL DEFAULT 0.0
+    );
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS threat_intel_cache (
+        sha256 TEXT PRIMARY KEY,
+        provider_name TEXT NOT NULL,
+        status TEXT NOT NULL,
+        reputation_score INTEGER DEFAULT 0,
+        detection_counts TEXT,
+        malware_family TEXT,
+        details_json TEXT,
+        checked_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+        expires_time DATETIME
+    );
     """
 ]
 
@@ -145,5 +222,9 @@ SCHEMA_INDEXES = [
     "CREATE INDEX IF NOT EXISTS idx_existing_scan_sessions_time ON existing_scan_sessions(start_time);",
     "CREATE INDEX IF NOT EXISTS idx_existing_scan_sessions_status ON existing_scan_sessions(status);",
     "CREATE INDEX IF NOT EXISTS idx_existing_scan_threats_scan_id ON existing_scan_threats(scan_id);",
-    "CREATE INDEX IF NOT EXISTS idx_incidents_dismissed ON incidents(dismissed);"
+    "CREATE INDEX IF NOT EXISTS idx_incidents_dismissed ON incidents(dismissed);",
+    "CREATE INDEX IF NOT EXISTS idx_usb_scan_sessions_time ON usb_scan_sessions(start_time);",
+    "CREATE INDEX IF NOT EXISTS idx_usb_scan_results_scan_id ON usb_scan_results(scan_id);",
+    "CREATE INDEX IF NOT EXISTS idx_image_hidden_text_scans_time ON image_hidden_text_scans(scan_time);",
+    "CREATE INDEX IF NOT EXISTS idx_threat_intel_cache_sha256 ON threat_intel_cache(sha256);"
 ]

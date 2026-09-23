@@ -50,21 +50,12 @@ def main():
     # 2. Pre-populate default monitored test path
     initialize_default_monitored_paths(db_manager)
 
-    # 3. Create Qt Application
+    # 3. Create Qt Application & Apply Master RansomGuard Theme
     app = QApplication(sys.argv)
     
-    # Load stylesheet
-    app_dir = os.path.dirname(os.path.abspath(__file__))
-    qss_path = os.path.join(app_dir, "ui", "styles.qss")
-    if os.path.exists(qss_path):
-        try:
-            qss_file = QFile(qss_path)
-            if qss_file.open(QFile.ReadOnly | QFile.Text):
-                stream = QTextStream(qss_file)
-                app.setStyleSheet(stream.readAll())
-                logger.info("Loaded custom stylesheet theme styles.qss")
-        except Exception as e:
-            logger.error(f"Failed to load stylesheet: {e}")
+    from ui.theme import apply_theme
+    apply_theme(app)
+    logger.info("Loaded master global RansomGuard EDR design system theme")
 
     # 4. Display Main Window
     window = MainWindow(db_manager)

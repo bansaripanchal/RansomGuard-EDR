@@ -98,16 +98,16 @@ class LightweightBarChart(QWidget):
         chart_w = w - left_pad - right_pad
         chart_h = h - top_pad - bottom_pad
 
-        # Draw dark chart background
-        painter.fillRect(0, 0, w, h, QColor("#10161D"))
+        # Draw dark chart background using global SURFACE token (#0D1422)
+        painter.fillRect(0, 0, w, h, QColor("#0D1422"))
         
         # Draw grid lines & values (3 steps)
-        grid_pen = QPen(QColor("#1C2630"), 1, Qt.DashLine)
+        grid_pen = QPen(QColor("#1A2940"), 1, Qt.DashLine)
         painter.setPen(grid_pen)
         label_font = QFont("Segoe UI", 9)
         painter.setFont(label_font)
         
-        text_pen = QPen(QColor("#8B98A8"))
+        text_pen = QPen(QColor("#71809A"))
         
         # Draw Legend in top header
         legend_font = QFont("Segoe UI", 8, QFont.Bold)
@@ -140,12 +140,12 @@ class LightweightBarChart(QWidget):
 
         # Baseline axis line
         base_line_y = top_pad + chart_h
-        painter.setPen(QPen(QColor("#2B3847"), 1))
+        painter.setPen(QPen(QColor("#1A2940"), 1))
         painter.drawLine(left_pad, base_line_y, w - right_pad, base_line_y)
 
         total_sum = sum(d.get("total", 0) for d in self.days_data) if self.days_data else 0
         if not self.days_data or total_sum == 0:
-            painter.setPen(QPen(QColor("#8B98A8")))
+            painter.setPen(QPen(QColor("#71809A")))
             painter.drawText(
                 QRect(left_pad, top_pad, chart_w, chart_h),
                 Qt.AlignCenter,
@@ -360,10 +360,10 @@ class SecurityActivityPulseWidget(QWidget):
         node_r  = max_r  # distance to outer node dots
 
         # ── 1. DRAW CONCENTRIC RADAR RINGS & RADIAL GRID TICK LINES
-        # Outer faint radar glow
+        # Outer faint radar subtle blue glow
         glow_grad = QRadialGradient(cx, cy, max_r + 22)
-        glow_grad.setColorAt(0.0, QColor(14, 165, 233, 22))
-        glow_grad.setColorAt(0.6, QColor(14, 165, 233, 8))
+        glow_grad.setColorAt(0.0, QColor(22, 139, 255, 25))
+        glow_grad.setColorAt(0.6, QColor(22, 139, 255, 8))
         glow_grad.setColorAt(1.0, QColor(0, 0, 0, 0))
         painter.setPen(Qt.NoPen)
         painter.setBrush(QBrush(glow_grad))
@@ -373,22 +373,22 @@ class SecurityActivityPulseWidget(QWidget):
         painter.setBrush(Qt.NoBrush)
 
         # Ring 3 (Outermost radar perimeter)
-        pen_ring3 = QPen(QColor(30, 58, 95, 120), 1, Qt.DashLine)
+        pen_ring3 = QPen(QColor("#1A2940"), 1, Qt.DashLine)
         painter.setPen(pen_ring3)
         painter.drawEllipse(QPointF(cx, cy), node_r, node_r)
 
         # Ring 2 (Middle ring)
-        pen_ring2 = QPen(QColor(14, 165, 233, 90), 1, Qt.SolidLine)
+        pen_ring2 = QPen(QColor("#21334D"), 1, Qt.SolidLine)
         painter.setPen(pen_ring2)
         painter.drawEllipse(QPointF(cx, cy), ring2_r, ring2_r)
 
         # Ring 1 (Inner ring)
-        pen_ring1 = QPen(QColor(30, 58, 95, 160), 1, Qt.DotLine)
+        pen_ring1 = QPen(QColor("#1A2940"), 1, Qt.DotLine)
         painter.setPen(pen_ring1)
         painter.drawEllipse(QPointF(cx, cy), ring1_r, ring1_r)
 
         # Crosshair lines & diagonal radar ticks
-        cross_pen = QPen(QColor(30, 58, 95, 90), 1, Qt.SolidLine)
+        cross_pen = QPen(QColor("#1A2940"), 1, Qt.SolidLine)
         painter.setPen(cross_pen)
         # Horizontal & Vertical axes
         painter.drawLine(QPointF(cx - node_r - 10, cy), QPointF(cx + node_r + 10, cy))
@@ -399,12 +399,12 @@ class SecurityActivityPulseWidget(QWidget):
         painter.drawLine(QPointF(cx - diag_len, cy - diag_len), QPointF(cx + diag_len, cy + diag_len))
         painter.drawLine(QPointF(cx - diag_len, cy + diag_len), QPointF(cx + diag_len, cy - diag_len))
 
-        # ── 2. ROTATING RADAR SWEEP BEAM (subtle high-tech live effect)
+        # ── 2. ROTATING RADAR SWEEP BEAM (subtle electric blue live effect)
         sweep_rad = math.radians(self._sweep_angle)
         sweep_x = cx + node_r * math.cos(sweep_rad)
         sweep_y = cy + node_r * math.sin(sweep_rad)
 
-        sweep_pen = QPen(QColor(56, 189, 248, 70), 1.5)
+        sweep_pen = QPen(QColor(24, 215, 255, 90), 1.5)
         painter.setPen(sweep_pen)
         painter.drawLine(QPointF(cx, cy), QPointF(sweep_x, sweep_y))
 
@@ -450,23 +450,15 @@ class SecurityActivityPulseWidget(QWidget):
             painter.setBrush(QBrush(color))
             painter.drawEllipse(QPointF(spoke_start_x, spoke_start_y), 2.5, 2.5)
 
-            # ── GLOWING CIRCULAR ENDPOINT NODE (Point nx, ny)
-            glow_r = 16 if is_highlighted else 10
-            dot_grad = QRadialGradient(nx, ny, glow_r)
-            c_glow = QColor(color)
-            c_glow.setAlpha(180 if is_highlighted else 90)
-            c_transparent = QColor(color)
-            c_transparent.setAlpha(0)
-            dot_grad.setColorAt(0.0, c_glow)
-            dot_grad.setColorAt(1.0, c_transparent)
-
-            painter.setBrush(QBrush(dot_grad))
-            painter.drawEllipse(QPointF(nx, ny), glow_r, glow_r)
-
-            # Solid node dot
-            dot_radius = 5.5 if is_highlighted else 4.5
-            painter.setBrush(QBrush(color))
-            painter.drawEllipse(QPointF(nx, ny), dot_radius, dot_radius)
+            # Draw outer circular node endpoint dot
+            if is_highlighted:
+                painter.setPen(QPen(QColor("#FFFFFF"), 1.5))
+                painter.setBrush(QBrush(color))
+                painter.drawEllipse(QPointF(nx, ny), 6.0, 6.0)
+            else:
+                painter.setPen(Qt.NoPen)
+                painter.setBrush(QBrush(color))
+                painter.drawEllipse(QPointF(nx, ny), 4.5, 4.5)
 
             # Inner white core point
             painter.setBrush(QBrush(QColor("#FFFFFF")))
@@ -528,25 +520,25 @@ class SecurityActivityPulseWidget(QWidget):
         # ── 4. DRAW CENTRAL GLOWING NODE (TOTAL FILES HUB)
         center_rect = QRectF(cx - center_radius, cy - center_radius, center_radius * 2, center_radius * 2)
 
-        # Multi-layer central radial glow
+        # Multi-layer central radial glow (subtle electric blue glow)
         hub_glow = QRadialGradient(cx, cy, center_radius + 16)
-        hub_glow.setColorAt(0.0, QColor(14, 165, 233, 110))
-        hub_glow.setColorAt(0.5, QColor(14, 165, 233, 45))
-        hub_glow.setColorAt(1.0, QColor(14, 165, 233, 0))
+        hub_glow.setColorAt(0.0, QColor(22, 139, 255, 60))
+        hub_glow.setColorAt(0.5, QColor(56, 168, 255, 20))
+        hub_glow.setColorAt(1.0, QColor(0, 0, 0, 0))
         painter.setPen(Qt.NoPen)
         painter.setBrush(QBrush(hub_glow))
         painter.drawEllipse(QPointF(cx, cy), center_radius + 16, center_radius + 16)
 
         # Central Dark Hub Circle
-        hub_bg = QColor("#0A0F16")
-        hub_border = QColor("#0EA5E9") # Cyan glow border
+        hub_bg = QColor("#0D1422")
+        hub_border = QColor("#168BFF") # Electric blue border
         painter.setPen(QPen(hub_border, 2.0))
         painter.setBrush(QBrush(hub_bg))
         painter.drawEllipse(center_rect)
 
         # Inner decorative ring
         inner_r = center_radius - 4
-        painter.setPen(QPen(QColor("#1E3A5F"), 1.0, Qt.DotLine))
+        painter.setPen(QPen(QColor("#1A2940"), 1.0, Qt.DotLine))
         painter.setBrush(Qt.NoBrush)
         painter.drawEllipse(QPointF(cx, cy), inner_r, inner_r)
 

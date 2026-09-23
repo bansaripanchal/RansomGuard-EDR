@@ -31,7 +31,7 @@ class DismissItemDelegate(QStyledItemDelegate):
 
         # Draw selection background if row is selected
         if option.state & QStyle.State_Selected:
-            painter.fillRect(option.rect, QColor("#1A2634"))
+            painter.fillRect(option.rect, QColor("#10192D"))
 
         # Centered button bounding box
         rect = option.rect
@@ -47,10 +47,10 @@ class DismissItemDelegate(QStyledItemDelegate):
             painter.drawRoundedRect(btn_rect, 4, 4)
             painter.setPen(QColor("#EF4444"))
         else:
-            painter.setBrush(QColor("#16202B"))
-            painter.setPen(QPen(QColor("#2A394A"), 1))
+            painter.setBrush(QColor("#111A2B"))
+            painter.setPen(QPen(QColor("#1A2940"), 1))
             painter.drawRoundedRect(btn_rect, 4, 4)
-            painter.setPen(QColor("#94A3B8"))
+            painter.setPen(QColor("#71809A"))
 
         font = painter.font()
         font.setPointSize(11)
@@ -98,11 +98,11 @@ class ThreatsPage(QWidget):
         self.splitter.setHandleWidth(4)
         self.splitter.setStyleSheet("""
             QSplitter::handle {
-                background-color: #1C2630;
+                background-color: #1A2940;
                 border-radius: 2px;
             }
             QSplitter::handle:hover {
-                background-color: #3B82F6;
+                background-color: #355B8A;
             }
         """)
         self.main_layout.addWidget(self.splitter, 1)
@@ -167,8 +167,8 @@ class ThreatsPage(QWidget):
         toolbar_frame = QFrame(self)
         toolbar_frame.setStyleSheet("""
             QFrame {
-                background-color: #10161D;
-                border: 1px solid #1C2630;
+                background-color: #0D1422;
+                border: 1px solid #1A2940;
                 border-radius: 6px;
                 padding: 6px 12px;
             }
@@ -184,17 +184,17 @@ class ThreatsPage(QWidget):
 
         btn_style_base = """
             QPushButton {
-                background-color: #16202B;
+                background-color: #111A2B;
                 color: #CBD5E1;
-                border: 1px solid #1C2630;
+                border: 1px solid #1A2940;
                 border-radius: 4px;
                 padding: 4px 10px;
                 font-size: 14px;
                 font-weight: 600;
             }
             QPushButton:hover {
-                background-color: #1F2C3A;
-                border-color: #3B82F6;
+                background-color: #17233A;
+                border-color: #21334D;
             }
             QPushButton:checked {
                 background-color: %s;
@@ -221,7 +221,7 @@ class ThreatsPage(QWidget):
 
         self.btn_sev_low = QPushButton("Low", toolbar_frame)
         self.btn_sev_low.setCheckable(True)
-        self.btn_sev_low.setStyleSheet(btn_style_base % ("#3B82F6", "#3B82F6"))
+        self.btn_sev_low.setStyleSheet(btn_style_base % ("#168BFF", "#38A8FF"))
         self.btn_sev_low.setCursor(Qt.PointingHandCursor)
 
         # Mutually exclusive toggle group for Severity
@@ -240,7 +240,7 @@ class ThreatsPage(QWidget):
 
         # Divider
         div = QLabel("|", toolbar_frame)
-        div.setStyleSheet("color: #2D3748; font-weight: bold; margin-left: 4px; margin-right: 4px;")
+        div.setStyleSheet("color: #1A2940; font-weight: bold; margin-left: 4px; margin-right: 4px;")
         tb_layout.addWidget(div)
 
         # 2. Status Filters (All, Active, Resolved)
@@ -250,22 +250,22 @@ class ThreatsPage(QWidget):
 
         stat_btn_style = """
             QPushButton {
-                background-color: #16202B;
+                background-color: #111A2B;
                 color: #CBD5E1;
-                border: 1px solid #1C2630;
+                border: 1px solid #1A2940;
                 border-radius: 4px;
                 padding: 4px 10px;
                 font-size: 14px;
                 font-weight: 600;
             }
             QPushButton:hover {
-                background-color: #1F2C3A;
-                border-color: #3B82F6;
+                background-color: #17233A;
+                border-color: #21334D;
             }
             QPushButton:checked {
-                background-color: #2563EB;
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #168BFF, stop:1 #38A8FF);
                 color: #FFFFFF;
-                border: 1px solid #3B82F6;
+                border: 1px solid #38A8FF;
                 font-weight: bold;
             }
         """
@@ -302,17 +302,18 @@ class ThreatsPage(QWidget):
         self.btn_clear_filters = QPushButton("Clear Filters", toolbar_frame)
         self.btn_clear_filters.setStyleSheet("""
             QPushButton {
-                background-color: #1E293B;
-                color: #94A3B8;
-                border: 1px solid #334155;
+                background-color: #111A2B;
+                color: #A9B8D4;
+                border: 1px solid #1A2940;
                 border-radius: 4px;
                 padding: 4px 10px;
                 font-size: 14px;
                 font-weight: 600;
             }
             QPushButton:hover {
-                background-color: #334155;
+                background-color: #17233A;
                 color: #FFFFFF;
+                border-color: #355B8A;
             }
         """)
         self.btn_clear_filters.setCursor(Qt.PointingHandCursor)
@@ -328,8 +329,8 @@ class ThreatsPage(QWidget):
         self.table_frame = QFrame(self)
         self.table_frame.setStyleSheet("""
             QFrame {
-                background-color: #10161D;
-                border: 1px solid #1C2630;
+                background-color: #0D1422;
+                border: 1px solid #1A2940;
                 border-radius: 6px;
             }
         """)
@@ -346,31 +347,31 @@ class ThreatsPage(QWidget):
         self.table_view.setShowGrid(False)
         self.table_view.setStyleSheet("""
             QTableView {
-                background-color: #0D1218;
+                background-color: #0D1422;
                 border: none;
-                gridline-color: #1C2630;
-                color: #CBD5E1;
+                gridline-color: #1A2940;
+                color: #F4F7FF;
                 font-size: 12px;
                 outline: none;
             }
             QTableView::item {
                 padding: 6px 8px;
-                border-bottom: 1px solid #141C24;
+                border-bottom: 1px solid #1A2940;
             }
             QTableView::item:alternate {
-                background-color: #10161D;
+                background-color: #0F1726;
             }
             QTableView::item:selected {
-                background-color: #1A2634;
+                background-color: #17233A;
                 color: #FFFFFF;
-                border-left: 3px solid #3B82F6;
+                border-left: 3px solid #168BFF;
             }
             QHeaderView::section {
-                background-color: #10161D;
-                color: #8B98A8;
+                background-color: #111A2B;
+                color: #A9B8D4;
                 padding: 8px 8px;
                 border: none;
-                border-bottom: 1px solid #1C2630;
+                border-bottom: 1px solid #1A2940;
                 font-weight: 700;
                 font-size: 11px;
                 letter-spacing: 0.3px;
@@ -509,7 +510,7 @@ class ThreatsPage(QWidget):
         self.investigation_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
 
         self.investigation_container = QWidget()
-        self.investigation_container.setStyleSheet("background-color: #0A0E14;")
+        self.investigation_container.setStyleSheet("background-color: #070B16;")
         inv_layout = QVBoxLayout(self.investigation_container)
         inv_layout.setContentsMargins(0, 4, 4, 4)
         inv_layout.setSpacing(10)
@@ -521,8 +522,8 @@ class ThreatsPage(QWidget):
         self.header_card.setObjectName("investigationHeaderCard")
         self.header_card.setStyleSheet("""
             QFrame#investigationHeaderCard {
-                background-color: #10161D;
-                border: 1px solid #1C2630;
+                background-color: #0D1422;
+                border: 1px solid #1A2940;
                 border-left: 4px solid #EF4444;
                 border-radius: 6px;
                 padding: 10px 14px;
@@ -540,34 +541,35 @@ class ThreatsPage(QWidget):
         top_badge_row.setSpacing(8)
 
         self.hdr_sev_badge = QLabel("CRITICAL", self.header_card)
-        self.hdr_sev_badge.setStyleSheet("background-color: rgba(239, 68, 68, 0.2); color: #EF4444; font-weight: bold; font-size: 11px; border: 1px solid #EF4444; border-radius: 4px; padding: 2px 8px;")
+        self.hdr_sev_badge.setStyleSheet("background-color: rgba(255, 77, 103, 0.25); color: #FF4D67; font-weight: bold; font-size: 11px; border: 1px solid #FF4D67; border-radius: 4px; padding: 2px 8px;")
         top_badge_row.addWidget(self.hdr_sev_badge)
 
         self.hdr_status_badge = QLabel("ACTIVE", self.header_card)
-        self.hdr_status_badge.setStyleSheet("background-color: rgba(239, 68, 68, 0.15); color: #EF4444; font-weight: bold; font-size: 11px; border-radius: 4px; padding: 2px 8px;")
+        self.hdr_status_badge.setStyleSheet("background-color: rgba(239, 68, 68, 0.15); color: #EF4444; font-weight: bold; font-size: 11px; border: 1px solid rgba(239, 68, 68, 0.4); border-radius: 4px; padding: 2px 8px;")
         top_badge_row.addWidget(self.hdr_status_badge)
 
         self.hdr_risk_badge = QLabel("Risk Score: 95 / 100", self.header_card)
-        self.hdr_risk_badge.setStyleSheet("background-color: rgba(249, 115, 22, 0.15); color: #F97316; font-weight: bold; font-size: 11px; border-radius: 4px; padding: 2px 8px;")
+        self.hdr_risk_badge.setStyleSheet("color: #FFB84D; font-weight: bold; font-size: 11px; margin-left: 4px;")
         top_badge_row.addWidget(self.hdr_risk_badge)
 
         top_badge_row.addStretch()
         v_head.addLayout(top_badge_row)
 
-        self.hdr_title = QLabel("Security Incident", self.header_card)
-        self.hdr_title.setStyleSheet("font-size: 16px; font-weight: 800; color: #FFFFFF; background: transparent; border: none;")
+        self.hdr_title = QLabel("Threat Incident Investigation", self.header_card)
+        self.hdr_title.setStyleSheet("font-size: 17px; font-weight: 800; color: #F4F7FF; margin-top: 2px;")
         v_head.addWidget(self.hdr_title)
 
-        self.hdr_meta_lbl = QLabel("Detection Source: -  ·  Detected: -", self.header_card)
-        self.hdr_meta_lbl.setStyleSheet("color: #8B98A8; font-size: 12px; background: transparent; border: none;")
-        v_head.addWidget(self.hdr_meta_lbl)
+        self.hdr_meta = QLabel("ID: -- | Target: -- | Detected by: --", self.header_card)
+        self.hdr_meta.setStyleSheet("font-size: 11px; color: #8B98A8; font-family: Consolas, monospace;")
+        self.hdr_meta_lbl = self.hdr_meta
+        v_head.addWidget(self.hdr_meta)
 
         hc_layout.addLayout(v_head, 1)
 
         # Right Action Buttons
         v_actions = QVBoxLayout()
-        v_actions.setSpacing(6)
         v_actions.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        v_actions.setSpacing(6)
 
         h_act_btns = QHBoxLayout()
         h_act_btns.setSpacing(8)
@@ -575,16 +577,17 @@ class ThreatsPage(QWidget):
         self.report_threat_btn = QPushButton("📄 Generate Threat Report", self.header_card)
         self.report_threat_btn.setStyleSheet("""
             QPushButton {
-                background-color: #2563EB;
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #168BFF, stop:1 #38A8FF);
                 color: #FFFFFF;
-                border: none;
+                border: 1px solid #168BFF;
                 border-radius: 4px;
                 padding: 6px 14px;
                 font-size: 14px;
-                font-weight: bold;
+                font-weight: 600;
             }
             QPushButton:hover {
-                background-color: #1D4ED8;
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #1A94FF, stop:1 #52B4FF);
+                border-color: #38A8FF;
             }
         """)
         self.report_threat_btn.setCursor(Qt.PointingHandCursor)
@@ -594,43 +597,43 @@ class ThreatsPage(QWidget):
         self.resolve_btn = QPushButton("✓ Resolve Incident", self.header_card)
         self.resolve_btn.setStyleSheet("""
             QPushButton {
-                background-color: #16A34A;
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #10B981, stop:1 #059669);
                 color: #FFFFFF;
-                border: none;
+                border: 1px solid #10B981;
                 border-radius: 4px;
                 padding: 6px 14px;
                 font-size: 14px;
-                font-weight: bold;
+                font-weight: 600;
             }
             QPushButton:hover {
-                background-color: #15803D;
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #059669, stop:1 #047857);
             }
             QPushButton:disabled {
-                background-color: rgba(34, 197, 94, 0.15);
-                color: #22C55E;
-                border: 1px solid rgba(34, 197, 94, 0.35);
+                background: #111A2B;
+                color: #64748B;
+                border: 1px solid #1A2940;
             }
         """)
         self.resolve_btn.setCursor(Qt.PointingHandCursor)
         self.resolve_btn.clicked.connect(self._resolve_current_incident)
         h_act_btns.addWidget(self.resolve_btn)
 
-        self.close_panel_btn = QPushButton("× Close", self.header_card)
+        self.close_panel_btn = QPushButton("✕", self.header_card)
         self.close_panel_btn.setToolTip("Close investigation details panel")
         self.close_panel_btn.setStyleSheet("""
             QPushButton {
-                background-color: #1E293B;
+                background-color: #111A2B;
                 color: #CBD5E1;
-                border: 1px solid #334155;
+                border: 1px solid #1A2940;
                 border-radius: 4px;
                 padding: 6px 12px;
                 font-size: 14px;
                 font-weight: 600;
             }
             QPushButton:hover {
-                background-color: #334155;
+                background-color: #17233A;
                 color: #FFFFFF;
-                border-color: #64748B;
+                border-color: #355B8A;
             }
         """)
         self.close_panel_btn.setCursor(Qt.PointingHandCursor)
@@ -649,8 +652,8 @@ class ThreatsPage(QWidget):
         self.overview_card.setObjectName("investigationOverviewCard")
         self.overview_card.setStyleSheet("""
             QFrame#investigationOverviewCard {
-                background-color: #10161D;
-                border: 1px solid #1C2630;
+                background-color: #0D1422;
+                border: 1px solid #1A2940;
                 border-radius: 6px;
                 padding: 10px 14px;
             }
@@ -699,8 +702,8 @@ class ThreatsPage(QWidget):
         self.why_card.setObjectName("investigationWhyCard")
         self.why_card.setStyleSheet("""
             QFrame#investigationWhyCard {
-                background-color: #10161D;
-                border: 1px solid #1C2630;
+                background-color: #0D1422;
+                border: 1px solid #1A2940;
                 border-radius: 6px;
                 padding: 10px 14px;
             }
@@ -719,65 +722,51 @@ class ThreatsPage(QWidget):
         self.why_narrative_lbl.setTextInteractionFlags(Qt.TextSelectableByMouse)
         wc_layout.addWidget(self.why_narrative_lbl)
 
-        # Clean breakdown without giant boxes: Rule, Observed Evidence, Risk Contribution
-        breakdown_layout = QHBoxLayout()
-        breakdown_layout.setSpacing(16)
+        # Breakdown summary mini-table
+        why_box_row = QHBoxLayout()
+        why_box_row.setSpacing(12)
 
-        # Detection Rule
-        rule_vbox = QVBoxLayout()
-        rule_vbox.setSpacing(2)
-        lbl_r = QLabel("Detection Rule:", self.why_card)
-        lbl_r.setStyleSheet("color: #8B98A8; font-size: 11px; font-weight: 700; background: transparent; border: none;")
-        self.why_rule_val = QLabel("Not available", self.why_card)
-        self.why_rule_val.setStyleSheet("color: #38BDF8; font-size: 11px; font-weight: 600; font-family: Consolas, monospace; background: transparent; border: none;")
-        self.why_rule_val.setTextInteractionFlags(Qt.TextSelectableByMouse)
-        rule_vbox.addWidget(lbl_r)
-        rule_vbox.addWidget(self.why_rule_val)
-        breakdown_layout.addLayout(rule_vbox, 1)
+        def _make_narrative_metric(title_txt):
+            b = QFrame(self.why_card)
+            b.setStyleSheet("background-color: #111A2B; border: 1px solid #1A2940; border-radius: 4px; padding: 6px 10px;")
+            b_ly = QVBoxLayout(b)
+            b_ly.setContentsMargins(0, 0, 0, 0)
+            b_ly.setSpacing(2)
+            t = QLabel(title_txt, b)
+            t.setStyleSheet("color: #8B98A8; font-size: 10px; font-weight: 700; background: transparent; border: none;")
+            v = QLabel("--", b)
+            v.setStyleSheet("color: #F4F7FF; font-size: 11px; font-weight: 600; background: transparent; border: none;")
+            v.setWordWrap(True)
+            v.setTextInteractionFlags(Qt.TextSelectableByMouse)
+            b_ly.addWidget(t)
+            b_ly.addWidget(v)
+            return b, v
 
-        # Observed Evidence
-        ev_vbox = QVBoxLayout()
-        ev_vbox.setSpacing(2)
-        lbl_e = QLabel("Observed Evidence:", self.why_card)
-        lbl_e.setStyleSheet("color: #8B98A8; font-size: 11px; font-weight: 700; background: transparent; border: none;")
-        self.why_evidence_val = QLabel("Not available", self.why_card)
-        self.why_evidence_val.setStyleSheet("color: #E2E8F0; font-size: 11px; background: transparent; border: none;")
-        self.why_evidence_val.setWordWrap(True)
-        self.why_evidence_val.setTextInteractionFlags(Qt.TextSelectableByMouse)
-        ev_vbox.addWidget(lbl_e)
-        ev_vbox.addWidget(self.why_evidence_val)
-        breakdown_layout.addLayout(ev_vbox, 2)
+        b_rule, self.why_rule_val = _make_narrative_metric("PRIMARY RULE TRIGGERED")
+        b_evid, self.why_evidence_val = _make_narrative_metric("OBSERVED INDICATOR")
+        b_risk, self.why_risk_val = _make_narrative_metric("CONFIDENCE & CONTRIBUTION")
 
-        # Risk Contribution
-        risk_vbox = QVBoxLayout()
-        risk_vbox.setSpacing(2)
-        lbl_k = QLabel("Risk Contribution:", self.why_card)
-        lbl_k.setStyleSheet("color: #8B98A8; font-size: 11px; font-weight: 700; background: transparent; border: none;")
-        self.why_risk_val = QLabel("+0", self.why_card)
-        self.why_risk_val.setStyleSheet("color: #EF4444; font-size: 12px; font-weight: bold; background: transparent; border: none;")
-        self.why_risk_val.setTextInteractionFlags(Qt.TextSelectableByMouse)
-        risk_vbox.addWidget(lbl_k)
-        risk_vbox.addWidget(self.why_risk_val)
-        breakdown_layout.addLayout(risk_vbox, 1)
+        why_box_row.addWidget(b_rule, 1)
+        why_box_row.addWidget(b_evid, 2)
+        why_box_row.addWidget(b_risk, 1)
+        wc_layout.addLayout(why_box_row)
 
-        wc_layout.addLayout(breakdown_layout)
-
-        # Compatibility pointers
-        self.box_rule = {"widget": self.why_card, "val_lbl": self.why_rule_val}
+        # Compatibility references
+        self.box_trigger_rule = {"widget": self.why_card, "val_lbl": self.why_rule_val}
         self.box_evidence = {"widget": self.why_card, "val_lbl": self.why_evidence_val}
         self.box_risk_contrib = {"widget": self.why_card, "val_lbl": self.why_risk_val}
 
         inv_layout.addWidget(self.why_card)
 
         # ------------------------------------------------------------
-        # SECTION 4: Concrete Detection Evidence Table
+        # SECTION 4: Detection Evidence & Rules Applied (Full Dynamic Height)
         # ------------------------------------------------------------
         self.evidence_card = QFrame(self.investigation_container)
         self.evidence_card.setObjectName("investigationEvidenceCard")
         self.evidence_card.setStyleSheet("""
             QFrame#investigationEvidenceCard {
-                background-color: #10161D;
-                border: 1px solid #1C2630;
+                background-color: #0D1422;
+                border: 1px solid #1A2940;
                 border-radius: 6px;
                 padding: 10px 14px;
             }
@@ -812,11 +801,11 @@ class ThreatsPage(QWidget):
         ev_header.sectionResized.connect(lambda *_: self._adjust_evidence_table_height())
         ev_header.setStyleSheet("""
             QHeaderView::section {
-                background-color: #10161D;
+                background-color: #111A2B;
                 color: #CBD5E1;
                 padding: 4px 10px;
                 border: none;
-                border-bottom: 1px solid #1C2630;
+                border-bottom: 1px solid #1A2940;
                 font-weight: 700;
                 font-size: 11px;
             }
@@ -824,14 +813,14 @@ class ThreatsPage(QWidget):
 
         self.evidence_table.setStyleSheet("""
             QTableWidget {
-                background-color: #0D1218;
-                border: 1px solid #1C2630;
+                background-color: #0D1422;
+                border: 1px solid #1A2940;
                 border-radius: 4px;
                 outline: none;
             }
             QTableWidget::item {
                 padding: 6px 10px;
-                border-bottom: 1px solid #141C24;
+                border-bottom: 1px solid #1A2940;
                 color: #CBD5E1;
                 font-size: 11px;
             }
@@ -841,14 +830,12 @@ class ThreatsPage(QWidget):
         inv_layout.addWidget(self.evidence_card)
 
         # ------------------------------------------------------------
-        # SECTION 5: Activity Timeline
-        # ------------------------------------------------------------
         self.timeline_card = QFrame(self.investigation_container)
         self.timeline_card.setObjectName("investigationTimelineCard")
         self.timeline_card.setStyleSheet("""
             QFrame#investigationTimelineCard {
-                background-color: #10161D;
-                border: 1px solid #1C2630;
+                background-color: #0D1422;
+                border: 1px solid #1A2940;
                 border-radius: 6px;
                 padding: 10px 14px;
             }
@@ -869,8 +856,8 @@ class ThreatsPage(QWidget):
         self.timeline_view.setShowGrid(False)
         self.timeline_view.setStyleSheet("""
             QTableView {
-                background-color: #0D1218;
-                border: 1px solid #1C2630;
+                background-color: #0D1422;
+                border: 1px solid #1A2940;
                 border-radius: 4px;
                 color: #CBD5E1;
                 font-size: 11px;
@@ -878,14 +865,14 @@ class ThreatsPage(QWidget):
             }
             QTableView::item {
                 padding: 4px 6px;
-                border-bottom: 1px solid #141C24;
+                border-bottom: 1px solid #1A2940;
             }
             QHeaderView::section {
-                background-color: #10161D;
+                background-color: #111A2B;
                 color: #8B98A8;
                 padding: 6px 8px;
                 border: none;
-                border-bottom: 1px solid #1C2630;
+                border-bottom: 1px solid #1A2940;
                 font-weight: 700;
                 font-size: 10px;
             }
@@ -911,11 +898,11 @@ class ThreatsPage(QWidget):
         # Empty activity timeline banner
         self.timeline_empty_lbl = QLabel("No related filesystem activity recorded.", self.timeline_card)
         self.timeline_empty_lbl.setStyleSheet("""
-            background-color: #0D1218;
-            color: #64748B;
+            background-color: #0D1422;
+            color: #8B98A8;
             font-size: 12px;
             font-style: italic;
-            border: 1px dashed #1C2630;
+            border: 1px dashed #1A2940;
             border-radius: 4px;
             padding: 12px;
         """)
@@ -950,8 +937,8 @@ class ThreatsPage(QWidget):
         frame = QFrame(self.why_card)
         frame.setStyleSheet("""
             QFrame {
-                background-color: #0D1218;
-                border: 1px solid #1C2630;
+                background-color: #111A2B;
+                border: 1px solid #1A2940;
                 border-radius: 4px;
                 padding: 6px 10px;
             }
@@ -1189,17 +1176,17 @@ class ThreatsPage(QWidget):
         self.hdr_title.setText(clean_name)
         self.hdr_sev_badge.setText(severity)
         if severity == "CRITICAL":
-            self.hdr_sev_badge.setStyleSheet("background-color: rgba(239, 68, 68, 0.25); color: #EF4444; font-weight: bold; font-size: 11px; border: 1px solid #EF4444; border-radius: 4px; padding: 2px 8px;")
-            self.header_card.setStyleSheet("QFrame#investigationHeaderCard { background-color: #10161D; border: 1px solid #1C2630; border-left: 4px solid #EF4444; border-radius: 6px; padding: 10px 14px; }")
+            self.hdr_sev_badge.setStyleSheet("background-color: rgba(255, 77, 103, 0.25); color: #FF4D67; font-weight: bold; font-size: 11px; border: 1px solid #FF4D67; border-radius: 4px; padding: 2px 8px;")
+            self.header_card.setStyleSheet("QFrame#investigationHeaderCard { background-color: #0D1422; border: 1px solid #1A2940; border-left: 4px solid #FF4D67; border-radius: 6px; padding: 10px 14px; }")
         elif severity == "HIGH":
             self.hdr_sev_badge.setStyleSheet("background-color: rgba(249, 115, 22, 0.2); color: #F97316; font-weight: bold; font-size: 11px; border: 1px solid #F97316; border-radius: 4px; padding: 2px 8px;")
-            self.header_card.setStyleSheet("QFrame#investigationHeaderCard { background-color: #10161D; border: 1px solid #1C2630; border-left: 4px solid #F97316; border-radius: 6px; padding: 10px 14px; }")
+            self.header_card.setStyleSheet("QFrame#investigationHeaderCard { background-color: #0D1422; border: 1px solid #1A2940; border-left: 4px solid #F97316; border-radius: 6px; padding: 10px 14px; }")
         elif severity == "MEDIUM":
-            self.hdr_sev_badge.setStyleSheet("background-color: rgba(245, 158, 11, 0.2); color: #F59E0B; font-weight: bold; font-size: 11px; border: 1px solid #F59E0B; border-radius: 4px; padding: 2px 8px;")
-            self.header_card.setStyleSheet("QFrame#investigationHeaderCard { background-color: #10161D; border: 1px solid #1C2630; border-left: 4px solid #F59E0B; border-radius: 6px; padding: 10px 14px; }")
+            self.hdr_sev_badge.setStyleSheet("background-color: rgba(255, 184, 77, 0.2); color: #FFB84D; font-weight: bold; font-size: 11px; border: 1px solid #FFB84D; border-radius: 4px; padding: 2px 8px;")
+            self.header_card.setStyleSheet("QFrame#investigationHeaderCard { background-color: #0D1422; border: 1px solid #1A2940; border-left: 4px solid #FFB84D; border-radius: 6px; padding: 10px 14px; }")
         else:
-            self.hdr_sev_badge.setStyleSheet("background-color: rgba(59, 130, 246, 0.2); color: #3B82F6; font-weight: bold; font-size: 11px; border: 1px solid #3B82F6; border-radius: 4px; padding: 2px 8px;")
-            self.header_card.setStyleSheet("QFrame#investigationHeaderCard { background-color: #10161D; border: 1px solid #1C2630; border-left: 4px solid #3B82F6; border-radius: 6px; padding: 10px 14px; }")
+            self.hdr_sev_badge.setStyleSheet("background-color: rgba(22, 139, 255, 0.15); color: #38A8FF; font-weight: bold; font-size: 11px; border: 1px solid #168BFF; border-radius: 4px; padding: 2px 8px;")
+            self.header_card.setStyleSheet("QFrame#investigationHeaderCard { background-color: #0D1422; border: 1px solid #1A2940; border-left: 4px solid #168BFF; border-radius: 6px; padding: 10px 14px; }")
 
         self.hdr_status_badge.setText(status)
         if status == "RESOLVED":

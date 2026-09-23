@@ -58,7 +58,7 @@ class Sidebar(QFrame):
 
         # Version label at bottom
         self.version_label = QLabel("v1.0.0 Stable", self)
-        self.version_label.setStyleSheet("color: #9CA3AF; padding: 15px; font-size: 11px;")
+        self.version_label.setStyleSheet("color: #71809A; padding: 15px; font-size: 11px;")
         self.version_label.setAlignment(Qt.AlignCenter)
         self.layout.addWidget(self.version_label)
 

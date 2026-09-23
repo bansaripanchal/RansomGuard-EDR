@@ -29,7 +29,7 @@ class AboutPage(QWidget):
         brand_layout.setSpacing(8)
 
         title = QLabel("🛡️ RANSOMGUARD EDR (ENDPOINT DETECTION & RESPONSE)", self)
-        title.setStyleSheet("font-size: 16px; font-weight: bold; color: #3B82F6;")
+        title.setStyleSheet("font-size: 16px; font-weight: bold; color: #38A8FF;")
         
         desc = QLabel(
             "RansomGuard is a lightweight, high-performance Endpoint Detection and Response (EDR) "
@@ -39,7 +39,7 @@ class AboutPage(QWidget):
             self
         )
         desc.setWordWrap(True)
-        desc.setStyleSheet("color: #FFFFFF; line-height: 1.4;")
+        desc.setStyleSheet("color: #F4F7FF; line-height: 1.4;")
         
         brand_layout.addWidget(title)
         brand_layout.addWidget(desc)
@@ -52,7 +52,7 @@ class AboutPage(QWidget):
         sys_layout.setSpacing(8)
 
         sys_title = QLabel("💻 ACTIVE ENDPOINT METADATA & SPECS", self)
-        sys_title.setStyleSheet("font-weight: bold; color: #9CA3AF; font-size: 13px; margin-bottom: 5px;")
+        sys_title.setStyleSheet("font-weight: bold; color: #71809A; font-size: 13px; margin-bottom: 5px;")
         sys_layout.addWidget(sys_title)
 
         # Gather specifications
@@ -75,7 +75,7 @@ class AboutPage(QWidget):
 
         for s in specs:
             lbl = QLabel(s, self)
-            lbl.setStyleSheet("font-family: Consolas, monospace; color: #D1D5DB; font-size: 12px;")
+            lbl.setStyleSheet("font-family: Consolas, monospace; color: #A9B8D4; font-size: 12px;")
             sys_layout.addWidget(lbl)
 
         scroll_layout.addWidget(sys_card)
@@ -87,7 +87,7 @@ class AboutPage(QWidget):
         arch_layout.setSpacing(8)
 
         arch_title = QLabel("⚙️ EDR ENGINE ARCHITECTURE", self)
-        arch_title.setStyleSheet("font-weight: bold; color: #9CA3AF; font-size: 13px; margin-bottom: 5px;")
+        arch_title.setStyleSheet("font-weight: bold; color: #71809A; font-size: 13px; margin-bottom: 5px;")
         arch_layout.addWidget(arch_title)
 
         engines = [
@@ -104,9 +104,9 @@ class AboutPage(QWidget):
 
         for eng_title, eng_desc in engines:
             e_lbl = QLabel(f"<b>{eng_title}</b>", self)
-            e_lbl.setStyleSheet("color: #3B82F6; font-size: 12px; margin-top: 5px;")
+            e_lbl.setStyleSheet("color: #38A8FF; font-size: 12px; margin-top: 5px;")
             d_lbl = QLabel(eng_desc, self)
-            d_lbl.setStyleSheet("color: #D1D5DB; font-size: 12px;")
+            d_lbl.setStyleSheet("color: #A9B8D4; font-size: 12px;")
             d_lbl.setWordWrap(True)
             arch_layout.addWidget(e_lbl)
             arch_layout.addWidget(d_lbl)

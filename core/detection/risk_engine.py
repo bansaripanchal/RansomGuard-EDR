@@ -20,9 +20,20 @@ class RiskEngine:
     No hardcoded or random scores; every point is backed by concrete evidence.
     """
 
+    # Centrally defined evidence thresholds for verdict classification
+    SUSPICIOUS_THRESHOLD = 50
+    MALICIOUS_THRESHOLD = 80
+
     # Baseline guide weights for individual static rule indicators
     RULE_RISKS = {
         "KNOWN_MALWARE_HASH_MATCH": 95,
+        "KNOWN_MALICIOUS_REPUTATION": 95,
+        "KNOWN_SUSPICIOUS_REPUTATION": 40,
+        "YARA_EICAR_TEST_FILE": 95,
+        "YARA_WANNACRY_RANSOMWARE_STRINGS": 95,
+        "YARA_RANSOMWARE_NOTE_KEYWORD_STORM": 55,
+        "YARA_SUSPICIOUS_POWERSHELL_OBFUSCATION": 35,
+        "YARA_HIGH_ENTROPY_PACKED_PE": 30,
         "COMBINED_RANSOMWARE_BEHAVIOR": 90,
         "CANARY_FILE_TAMPERING": 50,
         "SUSPICIOUS_SCRIPT_HEURISTICS": 15,
@@ -74,8 +85,8 @@ class RiskEngine:
             return {
                 "risk_score": 0,
                 "severity": SEVERITY_LOW,
-                "verdict": VERDICT_UNKNOWN,
-                "evidence_lines": ["• [ANALYSIS] File was inaccessible or locked during inspection (Verdict: UNKNOWN)"],
+                "detection_type": "Inaccessible File",
+                "evidence_lines": ["• [ANALYSIS] File was inaccessible or locked during inspection"],
                 "primary_threat_name": "Inaccessible / Unanalyzed File",
                 "detection_reason": "File could not be opened or accessed for telemetry inspection."
             }
@@ -217,32 +228,20 @@ class RiskEngine:
         else:
             severity = SEVERITY_LOW
 
-        # Deterministic Verdict Derivation
-        # MALICIOUS: Known hash, canary tampering with burst activity or multiple canaries, or multi-vector mass corruption
-        if is_known_hash:
-            verdict = VERDICT_MALICIOUS
-        elif canary_events and (len(canary_events) > 1 or (created + modified + renamed + deleted) >= 5):
-            verdict = VERDICT_MALICIOUS
-        elif renamed >= 5 and modified >= 5 and (sus_exts >= 1 or ext_changes >= 3):
-            verdict = VERDICT_MALICIOUS
-        elif final_score >= 80:
-            verdict = VERDICT_MALICIOUS
-        elif final_score >= 30:
-            verdict = VERDICT_SUSPICIOUS
-        else:
-            verdict = VERDICT_CLEAN
-
         # Select primary threat name and detection reason
         threat_candidates.sort(key=lambda t: t[1], reverse=True)
         if threat_candidates:
             primary_threat_name = threat_candidates[0][0]
             detection_reason = threat_candidates[0][2]
+            detection_type = primary_threat_name
         elif final_score >= 35:
             primary_threat_name = "Suspicious Filesystem Activity"
             detection_reason = f"Elevated activity observed ({created} creates, {modified} modifies, {renamed} renames, {deleted} deletes)."
+            detection_type = "Suspicious Behavior"
         else:
             primary_threat_name = "Normal Filesystem Activity"
             detection_reason = "No anomalous or malicious indicators detected."
+            detection_type = "Baseline Activity"
 
         if not evidence_lines:
             evidence_lines.append("• [BASELINE] Telemetry shows standard filesystem operations with no security anomalies.")
@@ -250,10 +249,11 @@ class RiskEngine:
         return {
             "risk_score": final_score,
             "severity": severity,
-            "verdict": verdict,
+            "detection_type": detection_type,
             "evidence_lines": evidence_lines,
             "primary_threat_name": primary_threat_name,
-            "detection_reason": detection_reason
+            "detection_reason": detection_reason,
+            "verdict": VERDICT_CLEAN if final_score < 35 else (VERDICT_SUSPICIOUS if final_score < 80 else VERDICT_MALICIOUS)
         }
 
     @classmethod
@@ -312,7 +312,8 @@ class RiskEngine:
     @classmethod
     def determine_verdict(cls, triggered_rules, is_accessible=True, has_errors=False):
         """
-        Backwards-compatible wrapper to compute evidence-based verdict.
+        Backwards-compatible wrapper to compute evidence-based verdict using
+        central RiskEngine thresholds. Single weak indicators (<50 score) remain CLEAN.
         """
         if not is_accessible or has_errors:
             return VERDICT_UNKNOWN
@@ -323,6 +324,7 @@ class RiskEngine:
         score, _ = cls.calculate_risk(triggered_rules)
         rule_names = {r.get("rule_name") for r in triggered_rules if r.get("rule_name")}
 
+        # 1. Strong Malicious Evidence
         if "KNOWN_MALWARE_HASH_MATCH" in rule_names:
             return VERDICT_MALICIOUS
 
@@ -332,16 +334,15 @@ class RiskEngine:
         if "COMBINED_RANSOMWARE_BEHAVIOR" in rule_names:
             return VERDICT_MALICIOUS
 
-        if "MASS_RENAME_AND_MODIFY" in rule_names and ("SUSPICIOUS_EXTENSION" in rule_names or "RANSOM_NOTE_CREATION" in rule_names):
+        if "MASS_RENAME_AND_MODIFY" in rule_names and ("SUSPICIOUS_EXTENSION" in rule_names or "RANSOMWARE_EXTENSION_DETECTED" in rule_names or "RANSOM_NOTE_CREATION" in rule_names):
             return VERDICT_MALICIOUS
 
-        if score >= 80:
+        if score >= cls.MALICIOUS_THRESHOLD: # 80
             return VERDICT_MALICIOUS
 
-        if score >= 30 or any(r in rule_names for r in (
-            "SUSPICIOUS_SCRIPT_HEURISTICS", "SUSPICIOUS_PE_CHARACTERISTICS",
-            "SUSPICIOUS_EXTENSION", "RANSOMWARE_EXTENSION_DETECTED", "RANSOM_NOTE_PATTERN"
-        )):
+        # 2. Meaningful Suspicious Evidence (Accumulated score >= 50)
+        if score >= cls.SUSPICIOUS_THRESHOLD: # 50
             return VERDICT_SUSPICIOUS
 
+        # Single weak rules (score < 50) remain CLEAN (informational finding)
         return VERDICT_CLEAN

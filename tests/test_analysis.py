@@ -35,8 +35,8 @@ class TestUnifiedAnalysisPipeline(unittest.TestCase):
         self.assertEqual(len(res.static_indicators), 0)
 
         # Explicit capability reporting
-        self.assertEqual(res.yara_status, "NOT_CONFIGURED")
-        self.assertEqual(res.reputation_status, "NOT_AVAILABLE")
+        self.assertIn(res.yara_status, ["No Match", "NOT_CONFIGURED"])
+        self.assertIn(res.reputation_status, ["No Reputation Data", "NOT_AVAILABLE"])
 
         verdict = RiskEngine.determine_verdict(res.static_indicators, is_accessible=res.accessible)
         score, severity = RiskEngine.calculate_risk(res.static_indicators)
@@ -45,7 +45,7 @@ class TestUnifiedAnalysisPipeline(unittest.TestCase):
         self.assertEqual(severity, "LOW")
 
     def test_2_suspicious_script_heuristics(self):
-        """Script containing administrative and evasion keywords should trigger SUSPICIOUS."""
+        """Single weak script heuristic (score 15) must remain CLEAN (informational finding)."""
         script_file = os.path.join(self.test_dir, "suspicious_task.ps1")
         with open(script_file, "w", encoding="utf-8") as f:
             f.write("# Suspicious payload script\nwscript.shell invoke-expression iex -w hidden bypass")
@@ -59,9 +59,11 @@ class TestUnifiedAnalysisPipeline(unittest.TestCase):
         self.assertIn("SUSPICIOUS_SCRIPT_HEURISTICS", rule_names)
 
         verdict = RiskEngine.determine_verdict(res.static_indicators, is_accessible=res.accessible)
-        self.assertEqual(verdict, VERDICT_SUSPICIOUS)
-        # Verify it is NOT classified as MALICIOUS on weak heuristics alone
-        self.assertNotEqual(verdict, VERDICT_MALICIOUS)
+        score, severity = RiskEngine.calculate_risk(res.static_indicators)
+        # Single weak indicator (score 15) must not automatically become SUSPICIOUS
+        self.assertEqual(verdict, VERDICT_CLEAN)
+        self.assertEqual(score, 15)
+        self.assertEqual(severity, "LOW")
 
     def test_3_known_malware_hash_signature(self):
         """Known malicious SHA-256 signature match must produce MALICIOUS."""
@@ -121,27 +123,36 @@ class TestUnifiedAnalysisPipeline(unittest.TestCase):
         verdict = RiskEngine.determine_verdict(res.static_indicators, is_accessible=res.accessible, has_errors=bool(res.error))
         self.assertEqual(verdict, VERDICT_UNKNOWN)
 
-    def test_7_weak_indicators_not_automatically_malicious(self):
-        """Suspicious extension or ransom note pattern alone must NOT trigger MALICIOUS."""
-        # 1. Suspicious extension alone
+    def test_7_weak_indicators_not_automatically_suspicious(self):
+        """Single weak indicator (score < 50) must remain CLEAN (informational finding)."""
+        # 1. Suspicious extension alone (score 15)
         locked_file = os.path.join(self.test_dir, "document.locked")
         with open(locked_file, "wb") as f:
             f.write(b"Single isolated locked file without mass rename behavior")
 
         res_locked = UnifiedFileAnalyzer.analyze_file(locked_file)
         verdict_locked = RiskEngine.determine_verdict(res_locked.static_indicators, is_accessible=res_locked.accessible)
-        self.assertEqual(verdict_locked, VERDICT_SUSPICIOUS)
+        self.assertEqual(verdict_locked, VERDICT_CLEAN)
+        self.assertNotEqual(verdict_locked, VERDICT_SUSPICIOUS)
         self.assertNotEqual(verdict_locked, VERDICT_MALICIOUS)
 
-        # 2. Ransom note pattern alone
+        # 2. Ransom note pattern alone (score 30)
         note_file = os.path.join(self.test_dir, "README_RECOVER.txt")
         with open(note_file, "w") as f:
             f.write("Single test note")
 
         res_note = UnifiedFileAnalyzer.analyze_file(note_file)
         verdict_note = RiskEngine.determine_verdict(res_note.static_indicators, is_accessible=res_note.accessible)
-        self.assertEqual(verdict_note, VERDICT_SUSPICIOUS)
-        self.assertNotEqual(verdict_note, VERDICT_MALICIOUS)
+        self.assertEqual(verdict_note, VERDICT_CLEAN)
+        self.assertNotEqual(verdict_note, VERDICT_SUSPICIOUS)
+
+        # 3. Accumulated indicators reaching threshold (score >= 50) -> SUSPICIOUS
+        multi_indicators = [
+            {"rule_name": "RANSOM_NOTE_PATTERN", "reason": "Filename matches ransom note"}, # +30
+            {"rule_name": "SUSPICIOUS_PE_CHARACTERISTICS", "reason": "Packed section"}      # +20
+        ]
+        verdict_multi = RiskEngine.determine_verdict(multi_indicators)
+        self.assertEqual(verdict_multi, VERDICT_SUSPICIOUS)
 
     def test_8_normal_activity_does_not_create_malware_alert(self):
         """Creating or modifying a single normal file in live monitoring must NOT create an incident."""

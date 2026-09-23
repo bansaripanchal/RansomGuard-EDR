@@ -20,12 +20,12 @@ class Topbar(QFrame):
         self.layout.addStretch()
 
         # Status badge for live protection
-        self.shield_badge = QLabel("🛡️ PROTECTION: ENABLED", self)
+        self.shield_badge = QLabel("🛡️ PROTECTION: ACTIVE", self)
         self.shield_badge.setObjectName("shieldBadge")
         self.shield_badge.setStyleSheet("""
-            background-color: rgba(34, 197, 94, 0.1); 
-            color: #22C55E; 
-            border: 1px solid rgba(34, 197, 94, 0.3);
+            background-color: rgba(0, 229, 154, 0.12); 
+            color: #00E59A; 
+            border: 1px solid rgba(0, 229, 154, 0.35);
             border-radius: 4px;
             padding: 5px 10px;
             font-weight: bold;
@@ -40,9 +40,9 @@ class Topbar(QFrame):
         if is_enabled:
             self.shield_badge.setText("🛡️ PROTECTION: ACTIVE")
             self.shield_badge.setStyleSheet("""
-                background-color: rgba(34, 197, 94, 0.1); 
-                color: #22C55E; 
-                border: 1px solid rgba(34, 197, 94, 0.3);
+                background-color: rgba(0, 229, 154, 0.12); 
+                color: #00E59A; 
+                border: 1px solid rgba(0, 229, 154, 0.35);
                 border-radius: 4px;
                 padding: 5px 10px;
                 font-weight: bold;
@@ -51,9 +51,9 @@ class Topbar(QFrame):
         else:
             self.shield_badge.setText("⚠️ PROTECTION: INACTIVE")
             self.shield_badge.setStyleSheet("""
-                background-color: rgba(156, 163, 175, 0.1); 
-                color: #9CA3AF; 
-                border: 1px solid rgba(156, 163, 175, 0.3);
+                background-color: rgba(255, 77, 103, 0.12); 
+                color: #FF4D67; 
+                border: 1px solid rgba(255, 77, 103, 0.35);
                 border-radius: 4px;
                 padding: 5px 10px;
                 font-weight: bold;

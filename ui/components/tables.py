@@ -407,7 +407,7 @@ class IncidentActivityTableModel(QAbstractTableModel):
                 if ev_type in ("CREATE",):
                     return QColor("#22C55E")
                 elif ev_type in ("MODIFY",):
-                    return QColor("#3B82F6")
+                    return QColor("#A855F7")
                 elif ev_type in ("RENAME",):
                     return QColor("#F59E0B")
                 elif ev_type in ("DELETE",):

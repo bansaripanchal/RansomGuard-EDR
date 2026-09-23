@@ -117,11 +117,11 @@ class ReportsPage(QWidget):
         # -------------------------------------------------------------
         self.status_card = QFrame(self)
         self.status_card.setProperty("class", "metricCard")
-        self.status_card.setStyleSheet("background-color: #161B22; border-color: #3B82F6;")
+        self.status_card.setStyleSheet("background-color: #0D1422; border: 1px solid #1A2940; border-radius: 8px;")
         self.status_layout = QVBoxLayout(self.status_card)
         
         self.status_label = QLabel("Idle", self)
-        self.status_label.setStyleSheet("color: #3B82F6; font-weight: 500;")
+        self.status_label.setStyleSheet("color: #38A8FF; font-weight: bold;")
         self.status_layout.addWidget(self.status_label)
         
         self.main_layout.addWidget(self.status_card)

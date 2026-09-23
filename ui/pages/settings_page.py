@@ -107,15 +107,15 @@ class DriveCard(QFrame):
 
     def _update_appearance(self):
         used_pct = self.drive_info.get("used_percent", 0.0)
-        chunk_color = "#3B82F6"
+        chunk_color = "#168BFF"
         if used_pct > 90:
-            chunk_color = "#EF4444"
+            chunk_color = "#FF4D67"
         elif used_pct > 80:
-            chunk_color = "#F59E0B"
+            chunk_color = "#FFB84D"
 
         self.prog_bar.setStyleSheet(f"""
             QProgressBar {{
-                background-color: #1E293B;
+                background-color: #111A2B;
                 border: none;
                 border-radius: 2px;
             }}
@@ -128,19 +128,19 @@ class DriveCard(QFrame):
         if self.is_protected:
             self.setStyleSheet("""
                 QFrame#driveCard {
-                    background-color: #0F172A;
-                    border: 1px solid #3B82F6;
+                    background-color: #17233A;
+                    border: 1px solid #355B8A;
                     border-radius: 8px;
                 }
                 QFrame#driveCard:hover {
-                    border: 1px solid #60A5FA;
-                    background-color: #131E35;
+                    border: 1px solid #168BFF;
+                    background-color: #1E2D4A;
                 }
             """)
             self.status_badge.setText("● ACTIVE")
             self.status_badge.setStyleSheet("""
-                background-color: rgba(34, 197, 94, 0.15);
-                color: #22C55E;
+                background-color: rgba(0, 229, 154, 0.15);
+                color: #00E59A;
                 font-size: 11px;
                 font-weight: bold;
                 border-radius: 4px;
@@ -149,19 +149,19 @@ class DriveCard(QFrame):
         else:
             self.setStyleSheet("""
                 QFrame#driveCard {
-                    background-color: #0A0E14;
-                    border: 1px solid #1E293B;
+                    background-color: #0D1422;
+                    border: 1px solid #1A2940;
                     border-radius: 8px;
                 }
                 QFrame#driveCard:hover {
-                    border: 1px solid #334155;
-                    background-color: #0E141D;
+                    border: 1px solid #21334D;
+                    background-color: #111A2B;
                 }
             """)
             self.status_badge.setText("○ NOT MONITORED")
             self.status_badge.setStyleSheet("""
-                background-color: rgba(148, 163, 184, 0.1);
-                color: #94A3B8;
+                background-color: rgba(113, 128, 154, 0.15);
+                color: #71809A;
                 font-size: 11px;
                 font-weight: 500;
                 border-radius: 4px;
@@ -248,8 +248,8 @@ class SettingsPage(QWidget):
         self.drives_card.setObjectName("settingsSectionCard")
         self.drives_card.setStyleSheet("""
             QFrame#settingsSectionCard {
-                background-color: #0D1218;
-                border: 1px solid #1C2630;
+                background-color: #0D1422;
+                border: 1px solid #1A2940;
                 border-radius: 8px;
             }
         """)
@@ -258,11 +258,11 @@ class SettingsPage(QWidget):
         drives_card_layout.setSpacing(12)
 
         drives_head = QLabel("PROTECTED DRIVES", self)
-        drives_head.setStyleSheet("font-weight: bold; color: #94A3B8; font-size: 13px; letter-spacing: 0.5px;")
+        drives_head.setStyleSheet("font-weight: bold; color: #A9B8D4; font-size: 13px; letter-spacing: 0.5px;")
         drives_card_layout.addWidget(drives_head)
 
         drives_desc = QLabel("Select which Windows drives RansomGuard should monitor and protect.", self)
-        drives_desc.setStyleSheet("color: #9CA3AF; font-size: 12px;")
+        drives_desc.setStyleSheet("color: #71809A; font-size: 12px;")
         drives_card_layout.addWidget(drives_desc)
 
         # Grid for real drive tiles
@@ -287,19 +287,20 @@ class SettingsPage(QWidget):
         self.save_scope_btn.setCursor(Qt.PointingHandCursor)
         self.save_scope_btn.setStyleSheet("""
             QPushButton {
-                background-color: #2563EB;
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #168BFF, stop:1 #38A8FF);
                 color: #FFFFFF;
                 font-weight: 600;
                 font-size: 13px;
                 padding: 8px 20px;
-                border: none;
+                border: 1px solid #168BFF;
                 border-radius: 6px;
             }
             QPushButton:hover {
-                background-color: #1D4ED8;
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #2596FF, stop:1 #52B5FF);
+                border-color: #38A8FF;
             }
             QPushButton:pressed {
-                background-color: #1E40AF;
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #0F75DC, stop:1 #168BFF);
             }
         """)
         self.save_scope_btn.clicked.connect(self._save_drive_scope)
@@ -337,8 +338,8 @@ class SettingsPage(QWidget):
         self.scan_card.setObjectName("settingsSectionCard")
         self.scan_card.setStyleSheet("""
             QFrame#settingsSectionCard {
-                background-color: #0D1218;
-                border: 1px solid #1C2630;
+                background-color: #0D1422;
+                border: 1px solid #1A2940;
                 border-radius: 8px;
             }
         """)
@@ -347,13 +348,13 @@ class SettingsPage(QWidget):
         scan_card_layout.setSpacing(12)
 
         scan_head = QLabel("EXISTING FILE SCAN", self)
-        scan_head.setStyleSheet("font-weight: bold; color: #94A3B8; font-size: 13px; letter-spacing: 0.5px;")
+        scan_head.setStyleSheet("font-weight: bold; color: #A9B8D4; font-size: 13px; letter-spacing: 0.5px;")
         scan_card_layout.addWidget(scan_head)
 
         scan_desc = QLabel(
             "Automatically scan protected drives for pre-existing or modified files.", self
         )
-        scan_desc.setStyleSheet("color: #9CA3AF; font-size: 12px;")
+        scan_desc.setStyleSheet("color: #71809A; font-size: 12px;")
         scan_card_layout.addWidget(scan_desc)
 
         scan_ctrl_layout = QHBoxLayout()
@@ -368,22 +369,23 @@ class SettingsPage(QWidget):
             self.freq_combo.addItem(opt)
         self.freq_combo.setStyleSheet("""
             QComboBox {
-                background-color: #161F2E;
+                background-color: #111A2B;
                 color: #F8FAFC;
-                border: 1px solid #334155;
+                border: 1px solid #1A2940;
                 border-radius: 6px;
                 padding: 6px 12px;
                 font-size: 13px;
                 min-width: 150px;
             }
             QComboBox:hover {
-                border-color: #3B82F6;
+                border-color: #355B8A;
             }
             QComboBox QAbstractItemView {
-                background-color: #0F172A;
+                background-color: #0D1422;
                 color: #F8FAFC;
-                selection-background-color: #2563EB;
-                border: 1px solid #334155;
+                selection-background-color: #17233A;
+                selection-color: #38A8FF;
+                border: 1px solid #1A2940;
             }
         """)
         self.freq_combo.currentTextChanged.connect(self._on_frequency_changed)
@@ -407,8 +409,8 @@ class SettingsPage(QWidget):
         self.protect_card.setObjectName("settingsSectionCard")
         self.protect_card.setStyleSheet("""
             QFrame#settingsSectionCard {
-                background-color: #0D1218;
-                border: 1px solid #1C2630;
+                background-color: #0D1422;
+                border: 1px solid #1A2940;
                 border-radius: 8px;
             }
         """)
@@ -417,7 +419,7 @@ class SettingsPage(QWidget):
         protect_card_layout.setSpacing(10)
 
         prot_head = QLabel("REAL-TIME PROTECTION", self)
-        prot_head.setStyleSheet("font-weight: bold; color: #94A3B8; font-size: 13px; letter-spacing: 0.5px;")
+        prot_head.setStyleSheet("font-weight: bold; color: #A9B8D4; font-size: 13px; letter-spacing: 0.5px;")
         protect_card_layout.addWidget(prot_head)
 
         prot_row = QHBoxLayout()
@@ -435,7 +437,7 @@ class SettingsPage(QWidget):
         self.shield_desc = QLabel(
             "Behavioral monitoring is enabled for selected protected drives.", self
         )
-        self.shield_desc.setStyleSheet("color: #9CA3AF; font-size: 12px;")
+        self.shield_desc.setStyleSheet("color: #71809A; font-size: 12px;")
         prot_row.addWidget(self.shield_desc)
         prot_row.addStretch()
 
@@ -449,8 +451,8 @@ class SettingsPage(QWidget):
         self.paths_card.setObjectName("settingsSectionCard")
         self.paths_card.setStyleSheet("""
             QFrame#settingsSectionCard {
-                background-color: #0D1218;
-                border: 1px solid #1C2630;
+                background-color: #0D1422;
+                border: 1px solid #1A2940;
                 border-radius: 8px;
             }
         """)
@@ -588,8 +590,8 @@ class SettingsPage(QWidget):
             row_frame = QFrame(self)
             row_frame.setStyleSheet("""
                 QFrame {
-                    background-color: #0A0E14;
-                    border: 1px solid #1E293B;
+                    background-color: #111A2B;
+                    border: 1px solid #1A2940;
                     border-radius: 6px;
                 }
             """)
